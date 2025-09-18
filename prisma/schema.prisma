@@ -1,15 +1,62 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Condition {
+  NEW
+  GOOD
+  DEFECT
+  BROKEN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  items     Item[]
+  createdAt DateTime @default(now())
+}
+
+model Item {
+  id             String    @id @default(cuid())
+  ownerId        String
+  owner          User      @relation(fields: [ownerId], references: [id])
+  images         ItemImage[]
+  name           String
+  description    String?
+  brandModel     String?
+  category       String?
+  quantity       Int       @default(1)
+  unitPrice      Decimal?  @db.Numeric(12,2)
+  purchasedAt    DateTime?
+  fundingSource  String?
+  location       String?
+  floor          String?
+  room           String?
+  rack           String?
+  condition      Condition  @default(GOOD)
+  damagedAt      DateTime?
+  pic            String?
+  lastCheckedAt  DateTime?
+  code           String?   @unique
+  qrPayload      String
+  barcodePayload String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([ownerId, category])
+  @@index([name])
+}
+
+model ItemImage {
+  id        String   @id @default(cuid())
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
 }
