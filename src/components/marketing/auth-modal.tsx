@@ -1,18 +1,32 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type AuthMode = "login" | "register";
 
 export function AuthModal({
   open,
   onOpenChange,
+  initialMode = "login",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initialMode?: AuthMode;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
+
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+    }
+  }, [initialMode, open]);
 
   if (!open) return null;
+
+  const handleOverlayClose = () => {
+    onOpenChange(false);
+  };
 
   const handleSubmit = () => {
     router.push("/dashboard");
@@ -21,12 +35,16 @@ export function AuthModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[#343B38]/60 px-4 py-10"
-      onClick={() => onOpenChange(false)}
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#343B38]/60 px-4 py-10 backdrop-blur-sm"
+      onMouseDown={handleOverlayClose}
+      onClick={handleOverlayClose}
     >
       <div
         className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#CFE6D6] bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="absolute -top-32 -right-28 h-48 w-48 rounded-full bg-[#9DDB8D]/50 blur-3xl" />
         <div className="absolute -bottom-20 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-[#C7D9F7]/50 blur-3xl" />
@@ -44,9 +62,9 @@ export function AuthModal({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#CFE6D6] text-lg font-semibold text-[#216B5B] transition hover:bg-[#EAF6EE]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#CFE6D6] text-sm font-semibold text-[#216B5B] transition hover:bg-[#EAF6EE]"
             >
-              ×
+              X
             </button>
           </div>
 
@@ -112,3 +130,5 @@ export function AuthModal({
     </div>
   );
 }
+
+

@@ -1,16 +1,100 @@
+"use client";
 import Link from "next/link";
+import { useEffect } from "react";
+
+function triggerAuthModal(mode: "login" | "register" = "login") {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("auth-modal:open", { detail: { mode } })
+  );
+}
 
 export default function LandingPage() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "smooth";
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
+    if (prefersReducedMotion.matches) {
+      return () => {
+        root.style.scrollBehavior = previousBehavior;
+      };
+    }
+
+    const elements = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-parallax]")
+    );
+    const baseTransforms = new WeakMap<HTMLElement, string>();
+
+    const update = () => {
+      const viewportCenter = window.innerHeight / 2;
+      elements.forEach((el) => {
+        const speed = Number(el.dataset.parallax ?? "0");
+        if (!baseTransforms.has(el)) {
+          const computed = window.getComputedStyle(el).transform;
+          baseTransforms.set(el, computed !== "none" ? computed : "");
+        }
+        const rect = el.getBoundingClientRect();
+        const elementCenter = rect.top + rect.height / 2;
+        const offset = (viewportCenter - elementCenter) * speed;
+        const base = baseTransforms.get(el) ?? "";
+        const parallaxTransform = `translate3d(0, ${offset}px, 0)`;
+        el.style.transform = `${base} ${parallaxTransform}`.trim();
+      });
+    };
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      }
+    };
+
+    update();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      root.style.scrollBehavior = previousBehavior;
+      window.removeEventListener("scroll", handleScroll);
+      elements.forEach((el) => {
+        el.style.transform = baseTransforms.get(el) ?? "";
+      });
+    };
+  }, []);
+
   return (
     <main className="bg-[#EAF6EE] text-[#343B38]">
-      <section id="home" className="relative overflow-hidden">
+      <section
+        id="home"
+        data-section
+        className="relative overflow-hidden pt-36 pb-24 md:pt-40"
+        style={{ minHeight: "100vh" }}
+      >
         <div className="absolute inset-0 bg-gradient-to-br from-[#2E6431] via-[#216B5B] to-[#36AF30]" />
-        <div className="absolute -bottom-24 -right-32 h-72 w-72 rounded-full bg-[#9DDB8D]/40 blur-3xl" />
-        <div className="absolute -top-20 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-[#1E6AD6]/20 blur-3xl" />
+        <div
+          data-parallax="0.2"
+          className="absolute -bottom-24 -right-32 h-72 w-72 rounded-full bg-[#9DDB8D]/40 blur-3xl"
+        />
+        <div
+          data-parallax="0.18"
+          className="absolute -top-20 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-[#1E6AD6]/20 blur-3xl"
+        />
 
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-16 px-4 py-20 lg:grid-cols-[1.05fr_minmax(0,1fr)] lg:py-28">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-16 px-4 lg:grid-cols-[1.05fr_minmax(0,1fr)]">
           <div className="space-y-8 text-white">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-1 text-sm uppercase tracking-wider backdrop-blur">
+            <span
+              data-parallax="0.08"
+              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-1 text-sm uppercase tracking-wider backdrop-blur"
+            >
               <span className="h-2 w-2 rounded-full bg-[#9DDB8D]" />
               Automasi Inventori Cerdas
             </span>
@@ -22,12 +106,13 @@ export default function LandingPage() {
               Invee-ai memadukan pengelolaan inventori, pencetakan label, serta deskripsi otomatis berbasis AI untuk mempercepat operasional gudang dan retail Anda.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link
-                href="/dashboard"
+              <button
+                type="button"
+                onClick={() => triggerAuthModal("login")}
                 className="inline-flex items-center justify-center rounded-full bg-[#36AF30] px-6 py-3 text-base font-semibold text-[#143819] shadow-lg shadow-[#36AF30]/40 transition hover:bg-[#2E6431] hover:text-white"
               >
                 Coba Sekarang
-              </Link>
+              </button>
               <Link
                 href="/#about"
                 className="inline-flex items-center justify-center rounded-full border border-white/40 px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10"
@@ -37,13 +122,19 @@ export default function LandingPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-white/30 bg-white/10 p-4 backdrop-blur">
+              <div
+                data-parallax="0.06"
+                className="rounded-xl border border-white/30 bg-white/10 p-4 backdrop-blur"
+              >
                 <p className="text-sm font-semibold text-[#CFE6D6]">Label instan</p>
                 <p className="text-sm text-white/80">
                   Cetak QR & Barcode dengan warna brand dan detail produk terbaru.
                 </p>
               </div>
-              <div className="rounded-xl border border-white/30 bg-white/10 p-4 backdrop-blur">
+              <div
+                data-parallax="0.05"
+                className="rounded-xl border border-white/30 bg-white/10 p-4 backdrop-blur"
+              >
                 <p className="text-sm font-semibold text-[#FFE3B3]">Automasi AI</p>
                 <p className="text-sm text-white/80">
                   Gunakan AI untuk mengisi deskripsi dan spesifikasi produk dari gambar.
@@ -52,8 +143,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 translate-x-6 translate-y-6 rounded-3xl bg-[#CFE6D6] opacity-60" />
+          <div data-parallax="0.12" className="relative">
+            <div className="absolute inset-0 rounded-3xl bg-[#CFE6D6] opacity-60" />
             <div className="relative rounded-3xl border border-white/40 bg-white p-6 shadow-2xl">
               <div className="mb-6 flex items-center justify-between">
                 <span className="rounded-full bg-[#EAF2FD] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[#185AB6]">
@@ -93,11 +184,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="features" className="relative overflow-hidden border-y border-[#CFE6D6] bg-white">
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#CFE6D6]/80 to-transparent" />
+      <section
+        id="features"
+        data-section
+        className="relative overflow-hidden border-y border-[#CFE6D6] bg-white"
+      >
+        <div
+          data-parallax="0.04"
+          className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#CFE6D6]/80 to-transparent"
+        />
         <div className="relative mx-auto flex max-w-6xl flex-col gap-12 px-4 py-20">
           <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-            <div>
+            <div data-parallax="0.05">
               <p className="inline-flex items-center gap-2 rounded-full bg-[#CFE6D6] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[#216B5B]">
                 Alur kerja terpadu
               </p>
@@ -111,19 +209,28 @@ export default function LandingPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-2xl border border-[#CFE6D6] bg-[#EAF6EE] p-6 shadow-sm">
+            <div
+              data-parallax="0.08"
+              className="rounded-2xl border border-[#CFE6D6] bg-[#EAF6EE] p-6 shadow-sm"
+            >
               <h3 className="mb-3 text-lg font-semibold text-[#216B5B]">Panel stok terpadu</h3>
               <p className="text-sm text-[#3E4643]">
                 Monitor setiap SKU secara real-time, lengkap dengan peringatan restock otomatis dan histori pergerakan barang.
               </p>
             </div>
-            <div className="rounded-2xl border border-[#C7D9F7] bg-[#EAF2FD] p-6 shadow-sm">
+            <div
+              data-parallax="0.06"
+              className="rounded-2xl border border-[#C7D9F7] bg-[#EAF2FD] p-6 shadow-sm"
+            >
               <h3 className="mb-3 text-lg font-semibold text-[#185AB6]">Label sesuai standar</h3>
               <p className="text-sm text-[#3E4643]">
                 Cetak QR atau barcode yang konsisten di setiap lokasi, dengan template yang dapat disesuaikan hingga detail warna.
               </p>
             </div>
-            <div className="rounded-2xl border border-[#FFE3B3] bg-[#FFF7E6] p-6 shadow-sm">
+            <div
+              data-parallax="0.04"
+              className="rounded-2xl border border-[#FFE3B3] bg-[#FFF7E6] p-6 shadow-sm"
+            >
               <h3 className="mb-3 text-lg font-semibold text-[#B97C00]">Workflow approval</h3>
               <p className="text-sm text-[#3E4643]">
                 Kirim, review, dan setujui label atau perubahan stok lewat satu sistem agar keputusan lebih cepat dan terdokumentasi.
@@ -132,7 +239,10 @@ export default function LandingPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
-            <div className="rounded-3xl border border-[#CFE6D6] bg-gradient-to-br from-white via-[#EAF6EE] to-white p-8 shadow-lg">
+            <div
+              data-parallax="0.05"
+              className="rounded-3xl border border-[#CFE6D6] bg-gradient-to-br from-white via-[#EAF6EE] to-white p-8 shadow-lg"
+            >
               <h3 className="text-2xl font-semibold text-[#216B5B]">Integrasi AI yang kontekstual</h3>
               <p className="mt-4 text-sm text-[#3E4643]">
                 Setiap gambar produk otomatis dipindai untuk menghasilkan deskripsi, spesifikasi, dan rekomendasi bundling. AI kami tidak sekadar menyalin, tetapi belajar dari data historis inventori Anda untuk menjaga konsistensi brand.
@@ -152,7 +262,10 @@ export default function LandingPage() {
                 </li>
               </ul>
             </div>
-            <div className="rounded-3xl border border-[#F6B8B8] bg-[#F6B8B8]/20 p-8 shadow-lg">
+            <div
+              data-parallax="0.04"
+              className="rounded-3xl border border-[#F6B8B8] bg-[#F6B8B8]/20 p-8 shadow-lg"
+            >
               <p className="text-sm font-semibold uppercase tracking-widest text-[#A83232]">
                 Dampak bisnis
               </p>
@@ -175,9 +288,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="about" className="mx-auto max-w-6xl px-4 py-20">
+      <section
+        id="about"
+        data-section
+        className="mx-auto max-w-6xl px-4 py-20"
+      >
         <div className="mb-12 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-          <div>
+          <div data-parallax="0.05">
             <p className="inline-flex items-center gap-2 rounded-full bg-[#CFE6D6] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[#216B5B]">
               Dibangun untuk tim operasional
             </p>
@@ -192,13 +309,19 @@ export default function LandingPage() {
 
         <div className="grid gap-12 md:grid-cols-[1.15fr_minmax(0,1fr)]">
           <div className="space-y-10">
-            <article className="rounded-3xl border border-[#CFE6D6] bg-white p-8 shadow-sm">
+            <article
+              data-parallax="0.05"
+              className="rounded-3xl border border-[#CFE6D6] bg-white p-8 shadow-sm"
+            >
               <h3 className="text-2xl font-semibold text-[#216B5B]">Visi kami</h3>
               <p className="mt-4 text-sm text-[#3E4643]">
                 Membuat setiap tim operasional dapat mengambil keputusan berbasis data dalam hitungan menit. Mulai dari pengecekan stok harian hingga menyusun strategi pembelian, semuanya terbantu oleh automasi yang bisa dipercaya.
               </p>
             </article>
-            <article className="rounded-3xl border border-[#C7D9F7] bg-white p-8 shadow-sm">
+            <article
+              data-parallax="0.04"
+              className="rounded-3xl border border-[#C7D9F7] bg-white p-8 shadow-sm"
+            >
               <h3 className="text-2xl font-semibold text-[#185AB6]">Cara kami bekerja</h3>
               <p className="mt-4 text-sm text-[#3E4643]">
                 Tim kami menggabungkan pengalaman warehouse, retail, dan teknologi AI. Setiap fitur yang dirilis melewati proses validasi dengan operator gudang agar manfaatnya langsung terasa.
@@ -207,13 +330,19 @@ export default function LandingPage() {
           </div>
 
           <div className="grid gap-6">
-            <div className="rounded-2xl border border-[#FFE3B3] bg-[#FFF7E6] p-6">
+            <div
+              data-parallax="0.06"
+              className="rounded-2xl border border-[#FFE3B3] bg-[#FFF7E6] p-6"
+            >
               <p className="text-sm font-semibold text-[#B97C00]">Mengapa satu halaman landing?</p>
               <p className="mt-3 text-sm text-[#3E4643]">
                 Navigasi utama kami langsung mengarah ke setiap bagian penting: hero, fitur, dan tentang. Anda bisa menelusuri keseluruhan cerita produk dalam satu alur tanpa merasa terpisah antar halaman.
               </p>
             </div>
-            <div className="rounded-2xl border border-[#F6B8B8] bg-[#F6B8B8]/20 p-6">
+            <div
+              data-parallax="0.05"
+              className="rounded-2xl border border-[#F6B8B8] bg-[#F6B8B8]/20 p-6"
+            >
               <p className="text-sm font-semibold text-[#A83232]">Siapa yang cocok?</p>
               <p className="mt-3 text-sm text-[#3E4643]">
                 UKM, distributor, hingga brand direct-to-consumer yang membutuhkan kendali penuh atas inventori fisik maupun online dengan biaya implementasi yang efisien.
@@ -224,7 +353,10 @@ export default function LandingPage() {
       </section>
 
       <section className="relative overflow-hidden border-t border-[#CFE6D6] bg-white">
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#C7D9F7]/40 to-transparent" />
+        <div
+          data-parallax="0.05"
+          className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#C7D9F7]/40 to-transparent"
+        />
         <div className="relative mx-auto max-w-6xl px-4 py-16">
           <div className="grid gap-10 rounded-3xl border border-[#C7D9F7] bg-[#EAF2FD] p-8 md:grid-cols-[1.2fr_minmax(0,1fr)] md:items-center">
             <div className="space-y-4">
@@ -237,12 +369,13 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/dashboard"
+              <button
+                type="button"
+                onClick={() => triggerAuthModal("login")}
                 className="flex-1 rounded-full bg-[#36AF30] px-5 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-[#36AF30]/30 transition hover:bg-[#2E6431]"
               >
-                Masuk ke Dashboard
-              </Link>
+                Masuk untuk mulai
+              </button>
               <Link
                 href="/#home"
                 className="flex-1 rounded-full border border-[#216B5B] px-5 py-3 text-center text-sm font-semibold text-[#216B5B] transition hover:bg-[#EAF6EE]"
@@ -256,4 +389,3 @@ export default function LandingPage() {
     </main>
   );
 }
-
