@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 
@@ -18,14 +18,17 @@ function resolveTitle(pathname: string) {
 export function Topbar() {
   const pathname = usePathname();
   const title = useMemo(() => resolveTitle(pathname ?? "/dashboard"), [pathname]);
-  const today = useMemo(() => ({
-    formatted: new Intl.DateTimeFormat("id-ID", {
+  const [today, setToday] = useState<string | null>(null);
+
+  useEffect(() => {
+    const formatted = new Intl.DateTimeFormat("id-ID", {
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
-    }).format(new Date()),
-  }), []);
+    }).format(new Date());
+    setToday(formatted);
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#CFE6D6] bg-white/80 backdrop-blur-xl">
@@ -34,12 +37,13 @@ export function Topbar() {
           <p className="text-xs font-semibold uppercase tracking-widest text-[#216B5B]">Menu aktif</p>
           <h1 className="text-xl font-semibold text-[#2E6431]">{title}</h1>
         </div>
-        <div className="hidden items-center gap-2 rounded-full border border-[#C7D9F7] bg-[#EAF2FD] px-4 py-2 text-xs font-medium text-[#185AB6] sm:flex">
-          <CalendarDays className="h-4 w-4" />
-          <span>{today.formatted}</span>
-        </div>
+        {today && (
+          <div className="hidden items-center gap-2 rounded-full border border-[#C7D9F7] bg-[#EAF2FD] px-4 py-2 text-xs font-medium text-[#185AB6] sm:flex">
+            <CalendarDays className="h-4 w-4" />
+            <span>{today}</span>
+          </div>
+        )}
       </div>
     </header>
   );
 }
-
