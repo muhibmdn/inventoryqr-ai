@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+
 import { db } from "@/db";
 import { itemCreateSchema } from "@/lib/validators";
-import { Prisma } from "@prisma/client";
+import type { ApiResult, Item } from "@/types/item";
+
+import {
+  buildCreatePayload,
+  buildPaginationMeta,
+  revalidateInventoryViews,
+  serializeItem,
+  type PrismaItem,
+} from "./utils";
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 20;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get("page") ?? "1");
-  const pageSize = Number(searchParams.get("pageSize") ?? "20");
+  const page = Number(searchParams.get("page") ?? DEFAULT_PAGE) || DEFAULT_PAGE;
+  const pageSize = Number(searchParams.get("pageSize") ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE;
   const q = searchParams.get("q")?.trim();
 
   const where: Prisma.ItemWhereInput = q
@@ -18,66 +31,58 @@ export async function GET(req: NextRequest) {
       }
     : {};
 
-  const [items, total] = await Promise.all([
+  const [records, total] = await Promise.all([
     db.item.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
+      skip: Math.max(page - 1, 0) * pageSize,
       take: pageSize,
-    }),
+    }) as Promise<PrismaItem[]>,
     db.item.count({ where }),
   ]);
 
-  return NextResponse.json({ items, total, page, pageSize });
+  return NextResponse.json<ApiResult<Item[]>>({
+    data: records.map(serializeItem),
+    meta: buildPaginationMeta(page, pageSize, total),
+  });
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = itemCreateSchema.safeParse(body);
-  if (!parsed.success)
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
+
+  if (!parsed.success) {
+    return NextResponse.json<ApiResult<null>>(
+      {
+        data: null,
+        error: "Payload tidak valid",
+        meta: { issues: parsed.error.flatten() },
+      },
       { status: 400 }
     );
+  }
 
-  // Sementara, assign ke user demo; sambungkan ke session auth di tahap berikutnya
-  const owner = await db.user.findFirst({
-    where: { email: "demo@invee.local" },
-  });
-  if (!owner)
-    return NextResponse.json(
-      { error: "Seed user not found" },
+  const owner = await db.user.findFirst({ where: { email: "demo@invee.local" } });
+  if (!owner) {
+    return NextResponse.json<ApiResult<null>>(
+      {
+        data: null,
+        error: "Seed user not found",
+      },
       { status: 500 }
     );
+  }
 
   const created = await db.item.create({
-    data: {
-      ownerId: owner.id,
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-      brandModel: parsed.data.brandModel ?? null,
-      category: parsed.data.category ?? null,
-      quantity: parsed.data.quantity,
-      unitPrice: parsed.data.unitPrice ?? null,
-      purchasedAt: parsed.data.purchasedAt
-        ? new Date(parsed.data.purchasedAt)
-        : null,
-      fundingSource: parsed.data.fundingSource ?? null,
-      location: parsed.data.location ?? null,
-      floor: parsed.data.floor ?? null,
-      room: parsed.data.room ?? null,
-      rack: parsed.data.rack ?? null,
-      condition: (parsed.data.condition as any) ?? "GOOD",
-      damagedAt: parsed.data.damagedAt
-        ? new Date(parsed.data.damagedAt)
-        : null,
-      pic: parsed.data.pic ?? null,
-      lastCheckedAt: parsed.data.lastCheckedAt
-        ? new Date(parsed.data.lastCheckedAt)
-        : null,
-      qrPayload: `INV:${crypto.randomUUID()}`,
-    },
+    data: buildCreatePayload(parsed.data, owner.id, body),
   });
 
-  return NextResponse.json(created, { status: 201 });
+  revalidateInventoryViews();
+
+  return NextResponse.json<ApiResult<Item>>(
+    {
+      data: serializeItem(created),
+    },
+    { status: 201 }
+  );
 }

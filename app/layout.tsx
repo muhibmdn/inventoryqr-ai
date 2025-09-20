@@ -20,13 +20,9 @@ export const metadata: Metadata = {
   },
   description: appConfig.description,
   applicationName: appConfig.name,
-  keywords: appConfig.seo.keywords,
+  keywords: [...appConfig.seo.keywords],
   authors: [{ name: appConfig.organization.name }],
   manifest: "/manifest.webmanifest",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -61,7 +57,6 @@ export const metadata: Metadata = {
   viewport: {
     width: "device-width",
     initialScale: 1,
-    themeColor: appConfig.themeColor,
   },
   alternates: {
     canonical: "/",
