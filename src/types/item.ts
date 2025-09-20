@@ -28,6 +28,6 @@ export type ItemInput = Omit<Item, "id">;
 
 export type ApiResult<T> = {
   data: T;
-  error?: string;
+  error: string | null;
   meta?: Record<string, unknown>;
 };

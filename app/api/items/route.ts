@@ -17,34 +17,48 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get("page") ?? DEFAULT_PAGE) || DEFAULT_PAGE;
-  const pageSize = Number(searchParams.get("pageSize") ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE;
-  const q = searchParams.get("q")?.trim();
+  try {
+    const { searchParams } = new URL(req.url);
+    const page = Number(searchParams.get("page") ?? DEFAULT_PAGE) || DEFAULT_PAGE;
+    const pageSize =
+      Number(searchParams.get("pageSize") ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE;
+    const q = searchParams.get("q")?.trim();
 
-  const where: Prisma.ItemWhereInput = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { category: { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : {};
+    const where: Prisma.ItemWhereInput = q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { category: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {};
 
-  const [records, total] = await Promise.all([
-    db.item.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: Math.max(page - 1, 0) * pageSize,
-      take: pageSize,
-    }) as Promise<PrismaItem[]>,
-    db.item.count({ where }),
-  ]);
+    const [records, total] = await Promise.all([
+      db.item.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: Math.max(page - 1, 0) * pageSize,
+        take: pageSize,
+      }) as Promise<PrismaItem[]>,
+      db.item.count({ where }),
+    ]);
 
-  return NextResponse.json<ApiResult<Item[]>>({
-    data: records.map(serializeItem),
-    meta: buildPaginationMeta(page, pageSize, total),
-  });
+    return NextResponse.json<ApiResult<Item[]>>({
+      data: records.map(serializeItem),
+      error: null,
+      meta: buildPaginationMeta(page, pageSize, total),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Gagal memuat data inventori";
+    return NextResponse.json<ApiResult<Item[]>>(
+      {
+        data: [],
+        error: message,
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -82,6 +96,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json<ApiResult<Item>>(
     {
       data: serializeItem(created),
+      error: null,
     },
     { status: 201 }
   );
