@@ -3,7 +3,7 @@ import { Prisma, type Condition } from "@prisma/client";
 
 import { db } from "@/db";
 import { cacheTags } from "@/lib/cache-tags";
-import type { Item, TablePageResult } from "@/types/item";
+import type { Item, PageResult } from "@/types/item";
 
 import { serializeItem, type PrismaItem } from "../utils";
 
@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
     const rows = hasMore ? records.slice(0, pageSize) : records;
     const nextCursor = hasMore ? rows[rows.length - 1]?.id ?? null : null;
 
-    const response = NextResponse.json<TablePageResult<Item>>(
+    const response = NextResponse.json<PageResult<Item>>(
       {
         rows: rows.map(serializeItem),
         nextCursor,
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
     const message =
       error instanceof Error ? error.message : "Gagal memuat data tabel inventori";
 
-    return NextResponse.json<TablePageResult<Item>>(
+    return NextResponse.json<PageResult<Item>>(
       {
         rows: [],
         nextCursor: null,
