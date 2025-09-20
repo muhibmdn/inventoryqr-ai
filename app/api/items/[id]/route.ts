@@ -1,41 +1,86 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { db } from "@/db";
 import { itemCreateSchema } from "@/lib/validators";
+import type { ApiResult, Item } from "@/types/item";
 
-export async function GET(
-	_: NextRequest,
-	{ params }: { params: { id: string } }
-) {
-	const item = await db.item.findUnique({ where: { id: params.id } });
-	if (!item)
-		return NextResponse.json({ error: "Not found" }, { status: 404 });
-	return NextResponse.json(item);
+import {
+  buildUpdatePayload,
+  revalidateInventoryViews,
+  serializeItem,
+  type PrismaItem,
+} from "../utils";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+const getIdFromContext = async (context: RouteContext) => {
+  const params = await context.params;
+  return params.id;
+};
+
+export async function GET(_req: NextRequest, context: RouteContext) {
+  const id = await getIdFromContext(context);
+  const record = (await db.item.findUnique({ where: { id } })) as PrismaItem | null;
+
+  if (!record) {
+    return NextResponse.json<ApiResult<null>>(
+      {
+        data: null,
+        error: "Item tidak ditemukan",
+      },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json<ApiResult<Item>>({
+    data: serializeItem(record),
+  });
 }
 
-export async function PATCH(
-	req: NextRequest,
-	{ params }: { params: { id: string } }
-) {
-	const body = await req.json();
-	const parsed = itemCreateSchema.partial().safeParse(body);
-	if (!parsed.success)
-		return NextResponse.json(
-			{ error: parsed.error.flatten() },
-			{ status: 400 }
-		);
+export async function PATCH(req: NextRequest, context: RouteContext) {
+  const id = await getIdFromContext(context);
+  const body = await req.json().catch(() => ({}));
+  const parsed = itemCreateSchema.partial().safeParse(body);
 
-	const data = parsed.data as any;
-	if (data.purchasedAt) data.purchasedAt = new Date(data.purchasedAt);
-	if (data.lastCheckedAt) data.lastCheckedAt = new Date(data.lastCheckedAt);
+  if (!parsed.success) {
+    return NextResponse.json<ApiResult<null>>(
+      {
+        data: null,
+        error: "Payload tidak valid",
+        meta: { issues: parsed.error.flatten() },
+      },
+      { status: 400 }
+    );
+  }
 
-	const updated = await db.item.update({ where: { id: params.id }, data });
-	return NextResponse.json(updated);
+  const data = buildUpdatePayload(parsed.data, body);
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json<ApiResult<null>>(
+      {
+        data: null,
+        error: "Tidak ada perubahan yang dikirim",
+      },
+      { status: 422 }
+    );
+  }
+
+  const updated = (await db.item.update({ where: { id }, data })) as PrismaItem;
+
+  revalidateInventoryViews();
+
+  return NextResponse.json<ApiResult<Item>>({
+    data: serializeItem(updated),
+  });
 }
 
-export async function DELETE(
-	_: NextRequest,
-	{ params }: { params: { id: string } }
-) {
-	await db.item.delete({ where: { id: params.id } });
-	return NextResponse.json({ ok: true });
+export async function DELETE(_req: NextRequest, context: RouteContext) {
+  const id = await getIdFromContext(context);
+
+  await db.item.delete({ where: { id } });
+
+  revalidateInventoryViews();
+
+  return NextResponse.json<ApiResult<null>>({
+    data: null,
+  });
 }
