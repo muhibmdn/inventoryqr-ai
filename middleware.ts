@@ -3,8 +3,14 @@ import { NextResponse } from "next/server";
 
 import { appConfig } from "@/app-config";
 
+const AUTH_BYPASS_ENABLED = process.env.AUTH_BYPASS === "true";
+
 export function middleware(request: NextRequest) {
   if (!request.nextUrl.pathname.startsWith(appConfig.urls.dashboard)) {
+    return NextResponse.next();
+  }
+
+  if (AUTH_BYPASS_ENABLED) {
     return NextResponse.next();
   }
 
