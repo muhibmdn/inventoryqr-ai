@@ -13,17 +13,11 @@ export default function LandingPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const root = document.documentElement;
-    const previousBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = "smooth";
-
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     );
     if (prefersReducedMotion.matches) {
-      return () => {
-        root.style.scrollBehavior = previousBehavior;
-      };
+      return;
     }
 
     const elements = Array.from(
@@ -63,7 +57,6 @@ export default function LandingPage() {
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      root.style.scrollBehavior = previousBehavior;
       window.removeEventListener("scroll", handleScroll);
       elements.forEach((el) => {
         el.style.transform = baseTransforms.get(el) ?? "";

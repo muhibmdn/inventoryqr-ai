@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import { appConfig } from "@/app-config";
@@ -54,10 +54,6 @@ export const metadata: Metadata = {
     description: appConfig.description,
     images: [appConfig.seo.openGraphImage],
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-  },
   alternates: {
     canonical: "/",
   },
@@ -65,6 +61,12 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -77,7 +79,11 @@ export default function RootLayout({
   const softwareJsonLd = buildSoftwareJsonLd();
 
   return (
-    <html lang={appConfig.locale} suppressHydrationWarning>
+    <html
+      lang={appConfig.locale}
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-dvh bg-background-muted text-foreground-muted antialiased">
         <Script id="jsonld-organization" type="application/ld+json">
           {JSON.stringify(organizationJsonLd)}
