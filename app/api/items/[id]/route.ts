@@ -34,6 +34,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
   return NextResponse.json<ApiResult<Item>>({
     data: serializeItem(record),
+    error: null,
   });
 }
 
@@ -70,6 +71,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
   return NextResponse.json<ApiResult<Item>>({
     data: serializeItem(updated),
+    error: null,
   });
 }
 
@@ -82,5 +84,6 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
 
   return NextResponse.json<ApiResult<null>>({
     data: null,
+    error: null,
   });
 }
