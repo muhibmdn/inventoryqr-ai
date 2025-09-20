@@ -32,7 +32,25 @@ export type ApiResult<T> = {
   meta?: Record<string, unknown>;
 };
 
-export type TablePageResult<T> = {
+export type ItemTableSort = {
+  id: string;
+  desc?: boolean | null;
+};
+
+export type ItemTableFilter = {
+  id: string;
+  value: unknown;
+};
+
+export type ItemTableQuery = {
+  cursor?: string | null;
+  pageSize: number;
+  sort?: ItemTableSort[] | null;
+  filters?: ItemTableFilter[] | null;
+  q?: string | null;
+};
+
+export type PageResult<T> = {
   rows: T[];
   nextCursor: string | null;
   error: string | null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -14,11 +14,10 @@ import {
 } from "@tanstack/react-table";
 import { Boxes, Pencil, Search, Trash2 } from "lucide-react";
 
-import type { Item } from "@/types/item";
+import type { Item, ItemTableQuery, PageResult } from "@/types/item";
 
 type InventoryItem = Item & {
   images?: { url: string }[];
-  brandModel?: string | null;
 };
 
 const conditionLabel: Record<NonNullable<InventoryItem["condition"]>, string> = {
@@ -28,13 +27,14 @@ const conditionLabel: Record<NonNullable<InventoryItem["condition"]>, string> = 
   BROKEN: "Rusak",
 };
 
-type LegacyInventoryTableProps = {
-  initialRows: InventoryItem[];
+type InventoryTableProps = {
+  initial: PageResult<Item>;
+  initialQuery: ItemTableQuery;
 };
 
-export function LegacyInventoryTable({ initialRows }: LegacyInventoryTableProps) {
-  const [data] = useState<InventoryItem[]>(initialRows);
-  const [globalFilter, setGlobalFilter] = useState("");
+export function InventoryTable({ initial, initialQuery }: InventoryTableProps) {
+  const [data, setData] = useState<InventoryItem[]>(() => initial.rows as InventoryItem[]);
+  const [globalFilter, setGlobalFilter] = useState(initialQuery.q ?? "");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -50,6 +50,10 @@ export function LegacyInventoryTable({ initialRows }: LegacyInventoryTableProps)
     lastCheckedAt: false,
     images: false,
   });
+
+  useEffect(() => {
+    setData(initial.rows as InventoryItem[]);
+  }, [initial.rows]);
 
   const columns = useMemo<ColumnDef<InventoryItem>[]>(
     () => [
