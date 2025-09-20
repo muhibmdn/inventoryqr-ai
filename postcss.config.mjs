@@ -1,5 +1,1 @@
-const config = {
-  plugins: ["@tailwindcss/postcss"],
-};
-
-export default config;
+import { createRequire } from "module";import tailwindcss from "@tailwindcss/postcss";const require = createRequire(import.meta.url);const optionalPlugin = (name) => {  try {    const plugin = require(name);    return plugin.default ?? plugin;  } catch {    if (process.env.NODE_ENV === "development") {      console.warn(`PostCSS plugin "${name}" is not installed.`);    }    return undefined;  }};const config = {  plugins: [tailwindcss, optionalPlugin("autoprefixer")].filter(Boolean),};export default config;

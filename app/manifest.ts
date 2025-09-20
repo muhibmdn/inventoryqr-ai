@@ -1,0 +1,48 @@
+import type { MetadataRoute } from "next";
+
+import { appConfig } from "@/app-config";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: appConfig.name,
+    short_name: appConfig.shortName,
+    description: appConfig.description,
+    start_url: "/",
+    display: "standalone",
+    scope: "/",
+    background_color: "#FFFFFF",
+    theme_color: appConfig.themeColor,
+    lang: appConfig.locale,
+    icons: [
+      {
+        src: "/icons/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "/icons/maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/icons/maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+    categories: appConfig.pwa.categories,
+    shortcuts: appConfig.pwa.shortcuts,
+  };
+}
