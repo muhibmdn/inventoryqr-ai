@@ -19,7 +19,8 @@
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "zod": "^4.1.9"
+    "zod": "^4.1.9",
+    "@tanstack/react-virtual": "^3.10.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

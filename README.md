@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InventoryQR Enterprise Table
 
-## Getting Started
+Project ini menyiapkan dashboard inventori berbasis Next.js dengan TanStack Table, fetch server-first, dan aksi server optimistis.
 
-First, run the development server:
+## Endpoint Data Inventori
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **GET `/api/items/table`**
+  - Query: `cursor`, `pageSize` (default 20), `sort` dan `filters` berupa JSON array, `q` untuk pencarian global.
+  - Response: `{ rows, nextCursor, error }` dengan header `Cache-Control: s-maxage=30, stale-while-revalidate=300`.
+  - Sorting & filtering mendukung kolom: `name`, `category`, `brand`, `quantity`, `condition`, `qrPayload`, `barcodePayload`, `createdAt`, `updatedAt`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Server Actions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **`updateItem({ id, patch })`**
+  - Validasi dengan Zod lalu mutasi Prisma (termasuk sinkronisasi foto utama melalui `photoUrl`).
+  - Mengembalikan `{ ok, id, patch }` dan melakukan `revalidateTag` untuk `items`, `inventory`, dan `dashboard`.
+- **`deleteItem(id)`**
+  - Menghapus item beserta foto, mereturn `{ ok, id }`, dan revalidate tag yang sama.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Server actions dipanggil dari komponen klien secara optimistis. Kegagalan otomatis membatalkan perubahan dan menampilkan toast kesalahan.
 
-## Learn More
+## TanStack Table UX
 
-To learn more about Next.js, take a look at the following resources:
+- Sorting, filtering, pagination cursor berbasis server; perubahan state langsung memperbarui `searchParams` sehingga SSR melakukan refetch.
+- Konfigurasi kolom (visibility & urutan) dipersist lewat `localStorage`:
+  - `inv.columnVisibility`
+  - `inv.columnOrder`
+- Header sticky, kolom aksi sticky kanan, hover row, dan virtualisasi otomatis saat data > 1000 baris.
+- Inline editable cell:
+  - Nama barang, jumlah, dan kondisi (select) menggunakan komponen editable khusus dengan optimistik update.
+- Modal edit memberikan form lengkap (deskripsi, harga, lokasi, PIC, tanggal, payload QR/Barcode, SKU, foto). Submit memanggil `updateItem` dengan patch teragregasi.
+- Tombol aksi memakai ikon (`Pencil`, `Trash2`) dengan `aria-label` dan notifikasi `aria-live="polite"`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Perilaku Optimistic & Toast
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Semua mutasi mengubah state tabel terlebih dahulu, memicu server action, lalu memanggil `router.refresh()` setelah `revalidateTag` agar SSR sinkron.
+- Jika server gagal, state direvert dari snapshot dan toast merah tampil selama ~3 detik; keberhasilan menampilkan toast hijau.
 
-## Deploy on Vercel
+## Pengembangan
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Jalankan `pnpm dev` untuk pengembangan lokal.
+- Validasi: jalankan `pnpm lint` dan `pnpm build` sebelum rilis (perlu Node.js + pnpm).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Catatan Tambahan
+
+- Skeleton dashboard hanya muncul pada kunjungan pertama berkat cookie `inventoryqr.firstVisit` di layout dashboard.
+- Virtualisasi memakai `@tanstack/react-virtual`; pastikan dependensi terpasang (`pnpm install`).
