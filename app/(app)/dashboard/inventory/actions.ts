@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db";
 import { cacheTags } from "@/lib/cache-tags";
+import { generateItemCodes } from "@/lib/item-codes";
 
 const conditionValues = ["NEW", "GOOD", "DEFECT", "BROKEN"] as const;
 
@@ -28,10 +29,9 @@ const updateInputSchema = z.object({
       purchasedAt: z.string().nullable().optional(),
       lastCheckedAt: z.string().nullable().optional(),
       damagedAt: z.string().nullable().optional(),
-      qrPayload: z.string().nullable().optional(),
-      barcodePayload: z.string().nullable().optional(),
       code: z.string().nullable().optional(),
-      photoUrl: z.string().url().nullable().optional(),
+      newImages: z.array(z.string().regex(/^data:image\//)).optional(),
+      removeImageIds: z.array(z.string().min(1)).optional(),
     })
     .partial(),
 });
@@ -75,10 +75,9 @@ export async function updateItem(rawInput: unknown) {
       purchasedAt,
       lastCheckedAt,
       damagedAt,
-      qrPayload,
-      barcodePayload,
       code,
-      photoUrl,
+      newImages,
+      removeImageIds,
     },
   } = parsed.data;
 
@@ -100,11 +99,10 @@ export async function updateItem(rawInput: unknown) {
   if (purchasedAt !== undefined) data.purchasedAt = toNullableDate(purchasedAt);
   if (lastCheckedAt !== undefined) data.lastCheckedAt = toNullableDate(lastCheckedAt);
   if (damagedAt !== undefined) data.damagedAt = toNullableDate(damagedAt);
-  if (qrPayload !== undefined && qrPayload !== null) data.qrPayload = qrPayload;
-  if (barcodePayload !== undefined) data.barcodePayload = barcodePayload ?? null;
   if (code !== undefined) data.code = code ?? null;
 
   try {
+    let generatedCodes: Awaited<ReturnType<typeof generateItemCodes>> | null = null;
     await db.$transaction(async (tx) => {
       if (Object.keys(data).length > 0) {
         await tx.item.update({
@@ -113,30 +111,54 @@ export async function updateItem(rawInput: unknown) {
         });
       }
 
-      if (photoUrl !== undefined) {
-        const existing = await tx.itemImage.findFirst({
+      if ((Array.isArray(removeImageIds) && removeImageIds.length > 0) || (Array.isArray(newImages) && newImages.length > 0)) {
+        const removalIds = Array.isArray(removeImageIds) ? [...new Set(removeImageIds)] : [];
+        const additions = Array.isArray(newImages) ? newImages : [];
+
+        const currentImages = await tx.itemImage.findMany({
           where: { itemId: id },
-          orderBy: { createdAt: "asc" },
+          select: { id: true },
         });
 
-        if (photoUrl && photoUrl.trim() !== "") {
-          if (existing) {
-            await tx.itemImage.update({
-              where: { id: existing.id },
-              data: { url: photoUrl },
-            });
-          } else {
-            await tx.itemImage.create({
-              data: {
-                itemId: id,
-                url: photoUrl,
-              },
-            });
-          }
-        } else if (existing) {
-          await tx.itemImage.deleteMany({ where: { itemId: id } });
+        const remainingCount = currentImages.filter((image) => !removalIds.includes(image.id)).length;
+        const finalCount = remainingCount + additions.length;
+        if (finalCount < 2) {
+          throw new Error("Minimal dua foto harus tersimpan untuk setiap barang.");
+        }
+
+        if (removalIds.length > 0) {
+          await tx.itemImage.deleteMany({ where: { itemId: id, id: { in: removalIds } } });
+        }
+
+        if (additions.length > 0) {
+          await tx.itemImage.createMany({
+            data: additions.map((url) => ({ itemId: id, url })),
+          });
         }
       }
+
+      const latest = await tx.item.findUnique({
+        where: { id },
+        select: { id: true, code: true, name: true, category: true, location: true },
+      });
+
+      if (!latest) {
+        throw new Error("Item tidak ditemukan setelah pembaruan.");
+      }
+
+      generatedCodes = await generateItemCodes(latest);
+
+      await tx.item.update({
+        where: { id },
+        data: {
+          code: generatedCodes.code,
+          qrPayload: generatedCodes.qrPayload,
+          barcodePayload: generatedCodes.barcodePayload,
+          qrImage: generatedCodes.qrImage,
+          barcodeImage: generatedCodes.barcodeImage,
+        },
+      });
+
     });
 
     revalidateTag(cacheTags.items);
@@ -147,6 +169,7 @@ export async function updateItem(rawInput: unknown) {
       ok: true as const,
       id,
       patch: parsed.data.patch,
+      codes: generatedCodes ?? undefined,
     };
   } catch (error) {
     const message =
@@ -191,3 +214,4 @@ export async function deleteItem(rawInput: unknown) {
     };
   }
 }
+

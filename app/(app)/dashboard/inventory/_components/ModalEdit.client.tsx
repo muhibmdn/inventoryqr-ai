@@ -5,20 +5,26 @@ import {
   useEffect,
   useRef,
   useState,
+  type ChangeEvent,
+  type FormEvent,
 } from "react";
 
 import type { Item } from "@/types/item";
 
+import { Trash2, UploadCloud, X } from "lucide-react";
+
+import Image from "next/image";
+
 import type { EditResult } from "./cells/types";
 
 export type ModalPayload = {
-  optimistic: Partial<Item> & { images?: { url: string }[] };
+  optimistic: Partial<Item> & { images?: { id: string; url: string }[] };
   patch: Record<string, unknown>;
 };
 
 type ModalEditProps = {
   open: boolean;
-  item: Item & { images?: { url: string }[] };
+  item: Item & { images?: { id: string; url: string }[] };
   pending: boolean;
   onClose: () => void;
   onSubmit: (payload: ModalPayload) => Promise<EditResult>;
@@ -38,16 +44,18 @@ type FormState = {
   purchasedAt: string;
   lastCheckedAt: string;
   damagedAt: string;
-  qrPayload: string;
-  barcodePayload: string;
-  sku: string;
-  photoUrl: string;
 };
 
+type ExistingImage = { id: string; url: string };
+type PendingImage = { file: File; preview: string };
+const generateTempId = () =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const toDateValue = (value: string | null | undefined): string =>
   value ? value.slice(0, 10) : "";
 
-const buildFormState = (item: Item & { images?: { url: string }[] }): FormState => ({
+const buildFormState = (item: Item & { images?: { id: string; url: string }[] }): FormState => ({
   description: item.description ?? "",
   unitPrice: item.unitPrice != null ? String(item.unitPrice) : "",
   location: item.location ?? "",
@@ -61,10 +69,6 @@ const buildFormState = (item: Item & { images?: { url: string }[] }): FormState 
   purchasedAt: toDateValue(item.purchasedAt ?? null),
   lastCheckedAt: toDateValue(item.lastCheckedAt ?? null),
   damagedAt: toDateValue(item.damagedAt ?? null),
-  qrPayload: item.qrPayload ?? "",
-  barcodePayload: item.barcodePayload ?? "",
-  sku: item.code ?? "",
-  photoUrl: item.images?.[0]?.url ?? "",
 });
 
 const focusableSelectors = [
@@ -82,12 +86,27 @@ export function ModalEdit({ open, item, pending, onClose, onSubmit }: ModalEditP
   const [form, setForm] = useState<FormState>(initialRef.current);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingImages, setExistingImages] = useState<ExistingImage[]>(item.images ?? []);
+  const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<PendingImage[]>([]);
 
   useEffect(() => {
     initialRef.current = buildFormState(item);
     setForm(initialRef.current);
     setError(null);
+    setExistingImages(item.images ?? []);
+    setRemovedImageIds([]);
+    setNewImages((prev) => {
+      prev.forEach(({ preview }) => URL.revokeObjectURL(preview));
+      return [];
+    });
   }, [item]);
+
+  useEffect(() => {
+    return () => {
+      newImages.forEach(({ preview }) => URL.revokeObjectURL(preview));
+    };
+  }, [newImages]);
 
   const trapFocus = useCallback((event: KeyboardEvent) => {
     if (event.key !== "Tab") return;
@@ -163,9 +182,70 @@ export function ModalEdit({ open, item, pending, onClose, onSubmit }: ModalEditP
     return Number.isFinite(parsed) ? parsed : null;
   };
 
+  const handleExistingImageRemove = (imageId: string) => {
+    setExistingImages((prev) => prev.filter((image) => image.id !== imageId));
+    setRemovedImageIds((prev) => (prev.includes(imageId) ? prev : [...prev, imageId]));
+  };
+
+  const handleNewImageRemove = (index: number) => {
+    setNewImages((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      if (removed) {
+        URL.revokeObjectURL(removed.preview);
+      }
+      return next;
+    });
+  };
+
+  const handleFileSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    const accepted = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (accepted.length === 0) {
+      event.target.value = "";
+      return;
+    }
+    setNewImages((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+    ]);
+    event.target.value = "";
+  };
+
+  const convertFileToWebp = useCallback((file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        const image = new window.Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth || image.width;
+          canvas.height = image.naturalHeight || image.height;
+          const context = canvas.getContext("2d");
+          if (!context) {
+            reject(new Error("Canvas tidak tersedia untuk konversi gambar."));
+            return;
+          }
+          context.drawImage(image, 0, 0);
+          try {
+            const webp = canvas.toDataURL("image/webp", 0.92);
+            resolve(webp.startsWith("data:image") ? webp : base64);
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error("Gagal mengubah gambar ke WebP."));
+          }
+        };
+        image.onerror = () => reject(new Error("Gagal memuat gambar untuk konversi."));
+        image.src = base64;
+      };
+      reader.onerror = () => reject(new Error("Gagal membaca file gambar."));
+      reader.readAsDataURL(file);
+    });
+  }, []);
   const buildPayload = () => {
     const initial = initialRef.current;
-    const optimistic: Partial<Item> & { images?: { url: string }[] } = {};
+    const optimistic: Partial<Item> & { images?: { id: string; url: string }[] } = {};
     const patch: Record<string, unknown> = {};
 
     const assignIfChanged = <T,>(key: keyof FormState, mapper: (value: string) => T, apply: (value: T) => void) => {
@@ -239,58 +319,64 @@ export function ModalEdit({ open, item, pending, onClose, onSubmit }: ModalEditP
       patch.damagedAt = value;
     });
 
-    assignIfChanged("qrPayload", toNullable, (value) => {
-      optimistic.qrPayload = value;
-      patch.qrPayload = value;
-    });
-
-    assignIfChanged("barcodePayload", toNullable, (value) => {
-      optimistic.barcodePayload = value;
-      patch.barcodePayload = value;
-    });
-
-    assignIfChanged("sku", toNullable, (value) => {
-      optimistic.code = value;
-      patch.code = value;
-    });
-
-    if (form.photoUrl !== initial.photoUrl) {
-      const photo = toNullable(form.photoUrl);
-      optimistic.images = photo ? [{ url: photo }] : [];
-      patch.photoUrl = photo;
-    }
-
     return { optimistic, patch };
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (pending || isSaving) return;
 
     const { optimistic, patch } = buildPayload();
-
-    if (Object.keys(patch).length === 0) {
-      onClose();
-      return;
-    }
+    const hasImageChanges = removedImageIds.length > 0 || newImages.length > 0;
 
     setIsSaving(true);
     setError(null);
 
     try {
-      const result = await onSubmit({ optimistic, patch });
-      if (!result.ok) {
-        setError(result.message ?? "Gagal memperbarui data.");
+      let convertedNewImages: string[] = [];
+
+      if (hasImageChanges) {
+        convertedNewImages = await Promise.all(newImages.map(({ file }) => convertFileToWebp(file)));
+        const totalImages = existingImages.length + convertedNewImages.length;
+        if (totalImages < 2) {
+          setError("Minimal dua foto harus tersimpan untuk setiap barang.");
+          setIsSaving(false);
+          return;
+        }
+
+        if (convertedNewImages.length > 0) {
+          patch.newImages = convertedNewImages;
+        }
+
+        if (removedImageIds.length > 0) {
+          patch.removeImageIds = removedImageIds;
+        }
+
+        optimistic.images = [
+          ...existingImages.map((image) => ({ ...image })),
+          ...convertedNewImages.map((url) => ({ id: generateTempId(), url })),
+        ];
+      }
+
+      if (!hasImageChanges && Object.keys(patch).length === 0) {
         setIsSaving(false);
+        onClose();
         return;
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memperbarui data.");
+
+      onSubmit({ optimistic, patch }).catch((error) => {
+        console.error("Gagal memperbarui data melalui modal edit.", error);
+      });
+
+      onClose();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Gagal memperbarui data.");
       setIsSaving(false);
+      return;
     }
   };
 
-  const handleChange = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (key: keyof FormState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
@@ -450,42 +536,63 @@ export function ModalEdit({ open, item, pending, onClose, onSubmit }: ModalEditP
                 className="rounded-2xl border border-[#CFE6D6] px-4 py-3 text-sm text-[#216B5B] focus:border-[#36AF30] focus:outline-none"
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm text-[#3E4643]">
-              <span>Payload QR</span>
-              <input
-                value={form.qrPayload}
-                onChange={handleChange("qrPayload")}
-                className="rounded-2xl border border-[#CFE6D6] px-4 py-3 text-sm text-[#216B5B] focus:border-[#36AF30] focus:outline-none"
-                placeholder="INV:123"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-[#3E4643]">
-              <span>Payload Barcode</span>
-              <input
-                value={form.barcodePayload}
-                onChange={handleChange("barcodePayload")}
-                className="rounded-2xl border border-[#CFE6D6] px-4 py-3 text-sm text-[#216B5B] focus:border-[#36AF30] focus:outline-none"
-                placeholder="0102030405"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-[#3E4643]">
-              <span>Kode / SKU</span>
-              <input
-                value={form.sku}
-                onChange={handleChange("sku")}
-                className="rounded-2xl border border-[#CFE6D6] px-4 py-3 text-sm text-[#216B5B] focus:border-[#36AF30] focus:outline-none"
-                placeholder="SKU-001"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-[#3E4643]">
-              <span>URL Foto Utama</span>
-              <input
-                value={form.photoUrl}
-                onChange={handleChange("photoUrl")}
-                className="rounded-2xl border border-[#CFE6D6] px-4 py-3 text-sm text-[#216B5B] focus:border-[#36AF30] focus:outline-none"
-                placeholder="https://..."
-              />
-            </label>
+            <div className="sm:col-span-2 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#216B5B]">Foto Barang</span>
+                <span className="text-xs text-[#3E4643]">Minimal 2 foto aktif.</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {existingImages.map((image) => (
+                  <div key={image.id} className="relative h-24 w-24 overflow-hidden rounded-xl border border-[#CFE6D6] bg-[#F8FBF9]">
+                    <Image
+                    src={image.url}
+                    alt="Foto barang"
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                    <button
+                      type="button"
+                      onClick={() => handleExistingImageRemove(image.id)}
+                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[#A83232] shadow transition hover:bg-[#FCECEB]"
+                      aria-label="Hapus foto"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                {newImages.map((image, index) => (
+                  <div
+                    key={`new-${index}`}
+                    className="relative h-24 w-24 overflow-hidden rounded-xl border border-dashed border-[#CFE6D6] bg-[#F8FBF9]"
+                  >
+                    <Image
+                    src={image.preview}
+                    alt="Foto baru"
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                    <button
+                      type="button"
+                      onClick={() => handleNewImageRemove(index)}
+                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-[#A83232] shadow transition hover:bg-[#FCECEB]"
+                      aria-label="Hapus foto baru"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#CFE6D6] bg-[#F8FBF9] text-xs text-[#216B5B] transition hover:border-[#36AF30] hover:bg-[#EAF6EE]">
+                  <UploadCloud className="h-5 w-5" />
+                  <span>Tambah Foto</span>
+                  <input type="file" accept="image/*" multiple onChange={handleFileSelection} className="hidden" />
+                </label>
+              </div>
+            </div>
+
           </div>
 
           <div className="flex flex-col gap-2">
@@ -514,3 +621,35 @@ export function ModalEdit({ open, item, pending, onClose, onSubmit }: ModalEditP
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

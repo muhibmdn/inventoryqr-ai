@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/db";
+import { generateItemCodes } from "@/lib/item-codes";
 import { itemCreateSchema } from "@/lib/validators";
 import type { ApiResult, Item } from "@/types/item";
 
@@ -65,7 +66,38 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     );
   }
 
-  const updated = (await db.item.update({ where: { id }, data })) as PrismaItem;
+  const updated = await db.$transaction(async (tx) => {
+    const base = (await tx.item.update({ where: { id }, data })) as PrismaItem;
+    const codes = await generateItemCodes({
+      id: base.id,
+      code: base.code,
+      name: base.name,
+      category: base.category,
+      location: base.location,
+    });
+
+    await tx.item.update({
+      where: { id },
+      data: {
+        code: codes.code,
+        qrPayload: codes.qrPayload,
+        barcodePayload: codes.barcodePayload,
+        qrImage: codes.qrImage,
+        barcodeImage: codes.barcodeImage,
+      },
+    });
+
+    const record = await tx.item.findUnique({
+      where: { id },
+      include: { images: { select: { id: true, url: true } } },
+    });
+
+    if (!record) {
+      throw new Error('Item tidak ditemukan setelah pembaruan.');
+    }
+
+    return record as PrismaItem & { images?: { id: string; url: string }[] };
+  });
 
   revalidateInventoryViews();
 

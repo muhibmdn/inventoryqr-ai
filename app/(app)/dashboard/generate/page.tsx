@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import bwipjs from "bwip-js";
 import QRCode from "qrcode";
@@ -68,24 +68,18 @@ export default function GenerateQrBarcodePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [barcodeValue, setBarcodeValue] = useState<string | null>(null);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
-  const barcodeCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
   useEffect(() => {
     return () => {
       files.forEach((file) => URL.revokeObjectURL(file.previewUrl));
     };
   }, [files]);
-
-  useEffect(() => {
-    if (!barcodeValue) return;
-    const canvas = barcodeCanvasRef.current;
-    if (!canvas) return;
+  const createBarcodeImage = useCallback((value: string) => {
+    const canvas = document.createElement("canvas");
     try {
       bwipjs.toCanvas(canvas, {
         bcid: "code128",
-        text: barcodeValue,
+        text: value,
         scale: 3,
         height: 10,
         includetext: true,
@@ -93,11 +87,41 @@ export default function GenerateQrBarcodePage() {
         backgroundcolor: "FFFFFF",
         barcolor: "2E6431",
       });
-      setBarcodeDataUrl(canvas.toDataURL("image/png"));
+      const output = canvas.toDataURL("image/webp", 0.9);
+      if (!output.startsWith("data:image")) {
+        return canvas.toDataURL("image/png");
+      }
+      return output;
     } catch (err) {
       console.error("Failed to render barcode", err);
+      return null;
     }
-  }, [barcodeValue]);
+  }, []);
+  const convertToWebp = useCallback((dataUrl: string) => {
+    return new Promise<string>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas tidak tersedia untuk konversi."));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        try {
+          const result = canvas.toDataURL("image/webp", 0.92);
+          resolve(result.startsWith("data:image") ? result : canvas.toDataURL("image/png"));
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error("Gagal mengonversi ke WebP."));
+        }
+      };
+      img.onerror = () => reject(new Error("Gagal memuat gambar untuk konversi."));
+      img.src = dataUrl;
+    });
+  }, []);
+
 
   const onFilesSelected = useCallback((incoming: FileList | null) => {
     if (!incoming) return;
@@ -163,6 +187,14 @@ export default function GenerateQrBarcodePage() {
     setIsGenerating(true);
 
     const inventoryCode = `INV-${Date.now().toString(36).toUpperCase()}`;
+    const barcodeImage = createBarcodeImage(inventoryCode);
+
+    if (!barcodeImage) {
+      setIsGenerating(false);
+      setError("Gagal membuat barcode. Coba lagi.");
+      return;
+    }
+
     const qrPayload = JSON.stringify({
       code: inventoryCode,
       name: form.name,
@@ -179,8 +211,9 @@ export default function GenerateQrBarcodePage() {
         margin: 2,
         scale: 8,
       });
-      setQrDataUrl(qrUrl);
-      setBarcodeValue(inventoryCode);
+      const qrWebp = await convertToWebp(qrUrl);
+      setQrDataUrl(qrWebp);
+      setBarcodeDataUrl(barcodeImage);
 
       await fetch("/api/items", {
         method: "POST",
@@ -202,6 +235,11 @@ export default function GenerateQrBarcodePage() {
           pic: form.pic || null,
           lastCheckedAt: form.lastCheckedAt || null,
           damagedAt: form.damagedAt || null,
+          code: inventoryCode,
+          qrPayload: inventoryCode,
+          barcodePayload: inventoryCode,
+          qrImage: qrWebp,
+          barcodeImage,
         }),
       });
 
@@ -627,7 +665,7 @@ export default function GenerateQrBarcodePage() {
               )}
               <button
                 type="button"
-                onClick={() => handleDownload(qrDataUrl, `${form.name || "invee"}-qr.png`)}
+                onClick={() => handleDownload(qrDataUrl, `${form.name || "invee"}-qr.webp`)}
                 className="inline-flex items-center gap-2 rounded-full bg-[#216B5B] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#216B5B]/30 transition hover:bg-[#2E6431]"
               >
                 Unduh QR
@@ -639,7 +677,6 @@ export default function GenerateQrBarcodePage() {
             <h3 className="text-base font-semibold text-[#185AB6]">Barcode</h3>
             <p className="mt-1 text-xs text-[#3E4643]">Gunakan untuk pelacakan inventori berbasis rak.</p>
             <div className="mt-6 flex flex-col items-center gap-4">
-              <canvas ref={barcodeCanvasRef} className="hidden" aria-hidden />
               {barcodeDataUrl ? (
                 <Image
                   src={barcodeDataUrl}
@@ -653,7 +690,7 @@ export default function GenerateQrBarcodePage() {
               )}
               <button
                 type="button"
-                onClick={() => handleDownload(barcodeDataUrl, `${form.name || "invee"}-barcode.png`)}
+                onClick={() => handleDownload(barcodeDataUrl, `${form.name || "invee"}-barcode.webp`)}
                 className="inline-flex items-center gap-2 rounded-full border border-[#185AB6] bg-white px-5 py-3 text-sm font-semibold text-[#185AB6] transition hover:bg-[#C7D9F7]"
               >
                 Unduh Barcode
@@ -703,7 +740,6 @@ export default function GenerateQrBarcodePage() {
                   setStep(0);
                   setFiles([]);
                   setForm(initialForm);
-                  setBarcodeValue(null);
                   setQrDataUrl(null);
                   setBarcodeDataUrl(null);
                   setInfo(null);
@@ -719,5 +755,20 @@ export default function GenerateQrBarcodePage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
