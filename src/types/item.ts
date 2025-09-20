@@ -31,3 +31,9 @@ export type ApiResult<T> = {
   error: string | null;
   meta?: Record<string, unknown>;
 };
+
+export type TablePageResult<T> = {
+  rows: T[];
+  nextCursor: string | null;
+  error: string | null;
+};
