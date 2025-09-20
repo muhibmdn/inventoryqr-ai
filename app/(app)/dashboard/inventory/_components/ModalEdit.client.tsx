@@ -306,9 +306,10 @@ export function ModalEdit({ open, item, pending, onClose, onSubmit }: ModalEditP
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-inventory-title"
-        className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl"
+        className="relative w-full max-w-[75vw] rounded-3xl bg-white shadow-2xl"
+        style={{ maxHeight: "85vh" }}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-6">
+        <form onSubmit={handleSubmit} className="flex max-h-[80vh] flex-col gap-6 overflow-y-auto p-6">
           <header className="flex items-start justify-between gap-4">
             <div>
               <h2 id="edit-inventory-title" className="text-xl font-semibold text-[#216B5B]">
