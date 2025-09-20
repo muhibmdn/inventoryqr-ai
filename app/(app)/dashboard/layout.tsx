@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 
-import DashboardLoading from "./loading";
+import SkeletonDashboard from "./loading";
 
 const FIRST_VISIT_COOKIE = "inventoryqr.firstVisit";
 
@@ -13,8 +13,8 @@ type DashboardLayoutProps = {
   steps: ReactNode;
 };
 
-export default function DashboardLayout({ children, steps }: DashboardLayoutProps) {
-  const cookieStore = cookies();
+export default async function DashboardLayout({ children, steps }: DashboardLayoutProps) {
+  const cookieStore = await cookies();
   const hasVisited = Boolean(cookieStore.get(FIRST_VISIT_COOKIE));
 
   if (!hasVisited) {
@@ -43,7 +43,7 @@ export default function DashboardLayout({ children, steps }: DashboardLayoutProp
         <Sidebar />
         <div className="flex flex-col">
           <Topbar />
-          <Suspense fallback={hasVisited ? null : <DashboardLoading />}>{mainContent}</Suspense>
+          <Suspense fallback={hasVisited ? null : <SkeletonDashboard />}>{mainContent}</Suspense>
         </div>
       </div>
     </div>

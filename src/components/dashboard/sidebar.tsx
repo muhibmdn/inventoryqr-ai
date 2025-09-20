@@ -8,8 +8,8 @@ const navItems = [
   { href: "/dashboard/inventory", label: "Inventory", icon: Boxes },
 ];
 
-const resolveCurrentPath = () => {
-  const headerList = headers();
+const resolveCurrentPath = async (): Promise<string> => {
+  const headerList = await headers();
   const fromInvoke = headerList.get("x-invoke-path");
   const fromNextUrl = headerList.get("next-url");
   const candidate = fromInvoke ?? fromNextUrl ?? "/dashboard";
@@ -25,8 +25,8 @@ const resolveCurrentPath = () => {
   return candidate.startsWith("/") ? candidate : `/${candidate}`;
 };
 
-export function Sidebar() {
-  const pathname = resolveCurrentPath();
+export async function Sidebar() {
+  const pathname = await resolveCurrentPath();
 
   return (
     <aside className="hidden min-h-dvh w-72 shrink-0 flex-col justify-between bg-gradient-to-b from-[#2E6431] via-[#216B5B] to-[#185AB6] text-white md:flex">

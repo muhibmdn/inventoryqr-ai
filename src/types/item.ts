@@ -48,6 +48,7 @@ export type ItemTableQuery = {
   sort?: ItemTableSort[] | null;
   filters?: ItemTableFilter[] | null;
   q?: string | null;
+  history?: (string | null)[] | null;
 };
 
 export type PageResult<T> = {

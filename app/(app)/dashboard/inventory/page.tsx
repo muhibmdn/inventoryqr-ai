@@ -4,11 +4,19 @@ import type { Item, ItemTableFilter, ItemTableQuery, ItemTableSort, PageResult }
 
 import { InventoryTable } from "./_components/InventoryTable.client";
 
-const DEFAULT_PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 20;
 const INVENTORY_REVALIDATE_SECONDS = 60;
 
+type SearchParamsRecord = Record<string, string | string[] | undefined>;
+
 type InventoryPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<SearchParamsRecord>;
+};
+
+const resolveSearchParams = async (value: InventoryPageProps["searchParams"]): Promise<SearchParamsRecord> => {
+  if (!value) return {};
+  const resolved = await value;
+  return resolved ?? {};
 };
 
 const parseJsonParam = <T,>(value: string | undefined | null): T | null => {
@@ -25,7 +33,7 @@ const normalizeString = (value: string | string[] | undefined): string | null =>
   if (Array.isArray(value)) {
     return typeof value[0] === "string" ? value[0] : null;
   }
-  return value;
+  return typeof value === "string" ? value : null;
 };
 
 const normalizeNumber = (value: string | string[] | undefined, fallback: number): number => {
@@ -37,12 +45,14 @@ const normalizeNumber = (value: string | string[] | undefined, fallback: number)
   return fallback;
 };
 
-export default async function InventoryPage({ searchParams = {} }: InventoryPageProps) {
+export default async function InventoryPage(props: InventoryPageProps) {
+  const searchParams = await resolveSearchParams(props.searchParams);
   const pageSize = normalizeNumber(searchParams.pageSize, DEFAULT_PAGE_SIZE);
   const cursor = normalizeString(searchParams.cursor);
   const q = normalizeString(searchParams.q);
   const sort = parseJsonParam<ItemTableSort[]>(normalizeString(searchParams.sort));
   const filters = parseJsonParam<ItemTableFilter[]>(normalizeString(searchParams.filters));
+  const history = parseJsonParam<(string | null)[]>(normalizeString(searchParams.history));
 
   const query = new URLSearchParams();
   query.set("pageSize", String(pageSize));
@@ -51,9 +61,11 @@ export default async function InventoryPage({ searchParams = {} }: InventoryPage
   if (sort?.length) query.set("sort", JSON.stringify(sort));
   if (filters?.length) query.set("filters", JSON.stringify(filters));
   if (q) query.set("q", q);
+  if (history?.length) query.set("history", JSON.stringify(history));
 
-  const result = await apiFetch<PageResult<Item>>(`/api/items/table?${query.toString()}` , {
-    next: { tags: [cacheTags.items], revalidate: INVENTORY_REVALIDATE_SECONDS },
+  const result = await apiFetch<PageResult<Item>>(`/api/items/table?${query.toString()}`, {
+    tags: [cacheTags.items],
+    revalidate: INVENTORY_REVALIDATE_SECONDS,
   });
 
   if (result.error) {
@@ -66,6 +78,7 @@ export default async function InventoryPage({ searchParams = {} }: InventoryPage
     sort: sort ?? null,
     filters: filters ?? null,
     q,
+    history: history ?? null,
   };
 
   return <InventoryTable initial={result} initialQuery={initialQuery} />;
