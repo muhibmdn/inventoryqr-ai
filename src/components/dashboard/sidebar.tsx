@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { headers } from "next/headers";
+import { usePathname } from "next/navigation";
 import { Boxes, Home, LogOut, QrCode } from "lucide-react";
 
 const navItems = [
@@ -8,28 +10,18 @@ const navItems = [
   { href: "/dashboard/inventory", label: "Inventory", icon: Boxes },
 ];
 
-const resolveCurrentPath = async (): Promise<string> => {
-  const headerList = await headers();
-  const fromInvoke = headerList.get("x-invoke-path");
-  const fromNextUrl = headerList.get("next-url");
-  const candidate = fromInvoke ?? fromNextUrl ?? "/dashboard";
-
-  if (candidate.startsWith("http")) {
-    try {
-      return new URL(candidate).pathname;
-    } catch {
-      return "/dashboard";
-    }
+const resolveActive = (pathname: string, href: string) => {
+  if (href === "/dashboard") {
+    return pathname === href;
   }
-
-  return candidate.startsWith("/") ? candidate : `/${candidate}`;
+  return pathname.startsWith(href);
 };
 
-export async function Sidebar() {
-  const pathname = await resolveCurrentPath();
+export function Sidebar() {
+  const pathname = usePathname() ?? "/dashboard";
 
   return (
-    <aside className="hidden min-h-dvh w-72 shrink-0 flex-col justify-between bg-gradient-to-b from-[#2E6431] via-[#216B5B] to-[#185AB6] text-white md:flex">
+    <aside className="relative z-30 hidden min-h-dvh w-72 shrink-0 flex-col justify-between bg-gradient-to-b from-[#2E6431] via-[#216B5B] to-[#185AB6] text-white md:flex">
       <div className="sticky top-0 flex min-h-dvh flex-col justify-between">
         <div>
           <Link href="/" className="flex items-center gap-3 px-6 pb-6 pt-8">
@@ -44,8 +36,7 @@ export async function Sidebar() {
 
           <nav className="mt-4 space-y-1 px-4">
             {navItems.map(({ href, label, icon: Icon }) => {
-              const isActive =
-                pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+              const isActive = resolveActive(pathname, href);
 
               return (
                 <Link
@@ -57,9 +48,8 @@ export async function Sidebar() {
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                   aria-current={isActive ? "page" : undefined}
-                  prefetch
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                   <span>{label}</span>
                 </Link>
               );
@@ -72,7 +62,7 @@ export async function Sidebar() {
             type="button"
             className="flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/20"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4" aria-hidden="true" />
             Keluar
           </button>
         </div>
