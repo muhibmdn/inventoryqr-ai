@@ -1,3 +1,4 @@
+/// <reference types="node" />
 declare global {
   type JsonLd<TType extends string = string> = {
     "@context": "https://schema.org";
@@ -17,6 +18,7 @@ declare module "bwip-js" {
       canvas: string | HTMLCanvasElement,
       options: BwipJsOptions
     ) => void;
+    toBuffer: (options: BwipJsOptions) => Promise<Buffer>;
   };
   export default bwipjs;
 }

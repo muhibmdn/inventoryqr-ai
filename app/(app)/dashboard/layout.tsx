@@ -30,7 +30,7 @@ export default async function DashboardLayout({ children, steps }: DashboardLayo
 
   return (
     <div className="bg-success-surface text-foreground-muted">
-      <div className="grid min-h-dvh w-full grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid min-h-dvh w-full grid-cols-1 md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
         <Sidebar />
         <div className="flex min-w-0 flex-col">
           <Topbar />
@@ -41,3 +41,7 @@ export default async function DashboardLayout({ children, steps }: DashboardLayo
     </div>
   );
 }
+
+
+
+

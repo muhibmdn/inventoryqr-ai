@@ -52,7 +52,7 @@ const DETAIL_FIELDS = [
 type DetailFieldKey = (typeof DETAIL_FIELDS)[number]["key"];
 
 type InventoryItem = Item & {
-  images?: { url: string }[];
+  images?: { id: string; url: string }[];
 };
 
 type InventoryTableProps = {
@@ -85,6 +85,11 @@ const CONDITION_OPTIONS = [
   { value: "BROKEN", label: CONDITION_LABEL.BROKEN },
 ];
 
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "item";
 const normalizeFiltersDraft = (filters: ItemTableFilter[] | null | undefined): FilterDraft => {
   const draft: FilterDraft = { category: "", condition: "" };
 
@@ -407,6 +412,25 @@ export function InventoryTable({ initial, initialQuery }: InventoryTableProps) {
           return { ok: false, message };
         }
 
+        const codes = result.codes;
+        if (codes) {
+          const { code, qrPayload, barcodePayload, qrImage, barcodeImage } = codes;
+          setData((prev) =>
+            prev.map((row) =>
+              row.id === id
+                ? {
+                    ...row,
+                    code,
+                    qrPayload,
+                    barcodePayload,
+                    qrImage,
+                    barcodeImage,
+                  }
+                : row
+            )
+          );
+        }
+
         showToast(successMessage, "success");
         startTransition(() => router.refresh());
         return { ok: true };
@@ -465,6 +489,25 @@ export function InventoryTable({ initial, initialQuery }: InventoryTableProps) {
           const message = result.error ?? "Gagal memperbarui data.";
           showToast(message, "error");
           return { ok: false, message };
+        }
+
+        const codes = result.codes;
+        if (codes) {
+          const { code, qrPayload, barcodePayload, qrImage, barcodeImage } = codes;
+          setData((prev) =>
+            prev.map((row) =>
+              row.id === id
+                ? {
+                    ...row,
+                    code,
+                    qrPayload,
+                    barcodePayload,
+                    qrImage,
+                    barcodeImage,
+                  }
+                : row
+            )
+          );
         }
 
         showToast("Data inventori diperbarui.", "success");
@@ -625,20 +668,50 @@ export function InventoryTable({ initial, initialQuery }: InventoryTableProps) {
         ),
       },
       {
-        id: "qrPayload",
-        accessorFn: (row) => row.qrPayload || row.barcodePayload || "-",
+        id: "qrDownloads",
+        accessorFn: (row) => row.qrImage || row.barcodeImage || row.qrPayload || "-",
         header: "QR/Barcode Barang",
         cell: ({ row }) => {
-          const qr = row.original.qrPayload;
-          const barcode = row.original.barcodePayload;
+          const { qrImage, barcodeImage, name, code } = row.original;
+          const baseButton =
+            "inline-flex items-center justify-center rounded-full px-4 py-2 font-semibold text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+          const safeBaseName = slugify(code ?? name);
+
+          const triggerDownload = (dataUrl: string | null | undefined, suffix: string) => {
+            if (!dataUrl) return;
+            const anchor = document.createElement("a");
+            anchor.href = dataUrl;
+            anchor.download = `${safeBaseName}-${suffix}.webp`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+          };
+
+          const qrButtonClass = qrImage
+            ? `${baseButton} bg-[#216B5B] text-white shadow-[0_4px_18px_rgba(33,107,91,0.25)] hover:bg-[#2E6431] focus-visible:ring-[#216B5B]`
+            : `${baseButton} bg-[#EAF6EE] text-[#7AA590] focus-visible:ring-[#A6C9B5]`;
+          const barcodeButtonClass = barcodeImage
+            ? `${baseButton} border border-[#185AB6] bg-white text-[#185AB6] hover:bg-[#C7D9F7] focus-visible:ring-[#185AB6]`
+            : `${baseButton} border border-[#C7D9F7] bg-[#F5F8FF] text-[#A0B6DD] focus-visible:ring-[#A0B6DD]`;
+
           return (
-            <div className="flex flex-col gap-1 text-xs">
-              <span className="rounded-full bg-[#EAF2FD] px-3 py-1 font-medium text-[#185AB6]">
-                QR: {qr ?? "-"}
-              </span>
-              <span className="rounded-full bg-[#FFF7E6] px-3 py-1 font-medium text-[#B97C00]">
-                Barcode: {barcode ?? "-"}
-              </span>
+            <div className="flex flex-col gap-2 text-xs">
+              <button
+                type="button"
+                className={qrButtonClass}
+                onClick={() => triggerDownload(qrImage, "qr")}
+                disabled={!qrImage}
+              >
+                Unduh QR
+              </button>
+              <button
+                type="button"
+                className={barcodeButtonClass}
+                onClick={() => triggerDownload(barcodeImage, "barcode")}
+                disabled={!barcodeImage}
+              >
+                Unduh Barcode
+              </button>
             </div>
           );
         },
@@ -973,3 +1046,7 @@ export function InventoryTable({ initial, initialQuery }: InventoryTableProps) {
     </div>
   );
 }
+
+
+
+

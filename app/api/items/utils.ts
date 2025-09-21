@@ -26,10 +26,25 @@ export const toDateOrNull = (value: string | null | undefined) => {
   return date;
 };
 
+const hasOwn = Object.prototype.hasOwnProperty;
+
+const resolveImageData = (raw: Record<string, unknown>, key: string) => {
+  if (!hasOwn.call(raw, key)) {
+    return undefined;
+  }
+
+  const value = raw[key];
+  if (value === null) return null;
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  return trimmed.startsWith("data:image/") ? trimmed : undefined;
+};
 export const toNullableString = (value: unknown) =>
   typeof value === "string" && value.trim() !== "" ? value : null;
 
-export const serializeItem = (item: PrismaItem): Item => ({
+export const serializeItem = (item: PrismaItem & { images?: { id: string; url: string }[] }): Item => ({
   id: item.id,
   name: item.name,
   sku: item.code ?? null,
@@ -49,8 +64,11 @@ export const serializeItem = (item: PrismaItem): Item => ({
   pic: item.pic ?? null,
   lastCheckedAt: item.lastCheckedAt ? item.lastCheckedAt.toISOString() : null,
   qrPayload: item.qrPayload ?? null,
+  qrImage: item.qrImage ?? null,
   barcodePayload: item.barcodePayload ?? null,
+  barcodeImage: item.barcodeImage ?? null,
   code: item.code ?? null,
+  images: item.images ? item.images.map((image) => ({ id: image.id, url: image.url })) : undefined,
 });
 
 export const buildCreatePayload = (
@@ -61,6 +79,8 @@ export const buildCreatePayload = (
   const rawRecord = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const sku = toNullableString(rawRecord.sku ?? rawRecord.code);
   const barcodePayload = toNullableString(rawRecord.barcodePayload);
+  const qrImageValue = resolveImageData(rawRecord, "qrImage");
+  const barcodeImageValue = resolveImageData(rawRecord, "barcodeImage");
   const qrPayloadRaw = rawRecord.qrPayload;
   const qrPayload =
     typeof qrPayloadRaw === "string" && qrPayloadRaw.trim() !== ""
@@ -87,7 +107,9 @@ export const buildCreatePayload = (
     lastCheckedAt: toDateOrNull(input.lastCheckedAt) ?? null,
     code: sku,
     qrPayload: qrPayload ?? `INV:${crypto.randomUUID()}`,
+    qrImage: qrImageValue ?? null,
     barcodePayload,
+    barcodeImage: barcodeImageValue ?? null,
   };
 };
 
@@ -98,6 +120,8 @@ export const buildUpdatePayload = (
   const rawRecord = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const sku = toNullableString(rawRecord.sku ?? rawRecord.code);
   const barcodePayload = toNullableString(rawRecord.barcodePayload);
+  const qrImageValue = resolveImageData(rawRecord, "qrImage");
+  const barcodeImageValue = resolveImageData(rawRecord, "barcodeImage");
   const qrPayloadRaw = rawRecord.qrPayload;
   const qrPayload =
     typeof qrPayloadRaw === "string" && qrPayloadRaw.trim() !== ""
@@ -125,6 +149,8 @@ export const buildUpdatePayload = (
   if (sku !== undefined) data.code = sku;
   if (barcodePayload !== undefined) data.barcodePayload = barcodePayload;
   if (qrPayload !== undefined) data.qrPayload = qrPayload;
+  if (qrImageValue !== undefined) data.qrImage = qrImageValue;
+  if (barcodeImageValue !== undefined) data.barcodeImage = barcodeImageValue;
 
   return data;
 };
@@ -143,3 +169,13 @@ export const revalidateInventoryViews = () => {
 };
 
 export type { PrismaItem };
+
+
+
+
+
+
+
+
+
+

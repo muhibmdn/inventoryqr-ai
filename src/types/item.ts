@@ -20,8 +20,11 @@ export type Item = {
   pic?: string | null;
   lastCheckedAt?: string | null;
   qrPayload?: string | null;
+  qrImage?: string | null;
   barcodePayload?: string | null;
+  barcodeImage?: string | null;
   code?: string | null;
+  images?: { id: string; url: string }[];
 };
 
 export type ItemInput = Omit<Item, "id">;
@@ -56,3 +59,5 @@ export type PageResult<T> = {
   nextCursor: string | null;
   error: string | null;
 };
+
+
