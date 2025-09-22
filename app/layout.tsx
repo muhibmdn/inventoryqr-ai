@@ -1,16 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 import {
   buildOrganizationJsonLd,
   buildSoftwareJsonLd,
   buildWebsiteJsonLd,
-} from "@/lib/jsonld";
-
-import { MarketingNavbar } from "../src/components/marketing/navbar"; // Changed to relative path
-import { MarketingFooter } from "../src/components/marketing/footer"; // Changed to relative path
-import { AuthModalWrapper } from "./AuthModalWrapper.client";
+} from "@/src/lib/jsonld";
 
 import "./globals.css";
 
@@ -98,12 +94,7 @@ export default function RootLayout({
         <Script id="jsonld-software" type="application/ld+json">
           {JSON.stringify(softwareJsonLd)}
         </Script>
-        <div className="flex min-h-dvh flex-col"> {/* Add this div for layout */}
-          <MarketingNavbar />
-          <main className="flex-1">{children}</main> {/* Wrap children in main */}
-          <MarketingFooter />
-        </div>
-        <AuthModalWrapper /> {/* Render the AuthModalWrapper */}
+        {children}
       </body>
     </html>
   );

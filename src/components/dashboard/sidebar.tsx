@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Home, LogOut, QrCode } from "lucide-react";
+import { Boxes, Home, LogOut, QrCode } from 'lucide-react';
+import { logoutAction } from '@/app/actions/auth';
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -58,13 +59,15 @@ export function Sidebar() {
         </div>
 
         <div className="px-4 pb-6 pt-10">
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/20"
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            Keluar
-          </button>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/20"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Keluar
+            </button>
+          </form>
         </div>
       </div>
     </aside>

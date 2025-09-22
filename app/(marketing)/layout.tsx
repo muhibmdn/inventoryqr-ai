@@ -1,5 +1,5 @@
-import { MarketingNavbar } from "@/components/marketing/navbar";
-import { MarketingFooter } from "@/components/marketing/footer";
+import { MarketingNavbar } from "@/src/components/marketing/navbar";
+import { MarketingFooter } from "@/src/components/marketing/footer";
 
 export default function MarketingLayout({
 	children,

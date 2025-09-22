@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 export default function DashboardError({
   error,

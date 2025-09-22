@@ -1,4 +1,4 @@
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 export type JsonLd<TType extends string = string> = {
   "@context": "https://schema.org";

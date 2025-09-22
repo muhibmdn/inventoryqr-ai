@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 export default function StepOnePage() {
   const checklist = [

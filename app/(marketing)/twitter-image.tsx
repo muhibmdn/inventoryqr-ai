@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 export const runtime = "edge";
 export const size = {

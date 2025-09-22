@@ -1,12 +1,14 @@
 import { Suspense, type ReactNode } from "react";
 import { cookies } from "next/headers";
 
-import { Sidebar } from "@/components/dashboard/sidebar";
-import { Topbar } from "@/components/dashboard/topbar";
+import { Sidebar } from "@/src/components/dashboard/sidebar";
+import { Topbar } from "@/src/components/dashboard/topbar";
+import { requireUser } from "@/src/lib/auth";
 
 import { FIRST_VISIT_COOKIE } from "./constants";
 import { FirstVisitSetter } from "./_components/FirstVisitSetter.client";
 import SkeletonDashboard from "./loading";
+
 
 type DashboardLayoutProps = {
   children: ReactNode;
@@ -14,6 +16,7 @@ type DashboardLayoutProps = {
 };
 
 export default async function DashboardLayout({ children, steps }: DashboardLayoutProps) {
+  await requireUser(); // Protect the dashboard route
   const cookieStore = await cookies();
   const hasVisited = Boolean(cookieStore.get(FIRST_VISIT_COOKIE));
 

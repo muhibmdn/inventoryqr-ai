@@ -1,6 +1,6 @@
-import { cacheTags } from "@/lib/cache-tags";
-import { apiFetch } from "@/lib/fetcher";
-import type { Item, ItemTableFilter, ItemTableQuery, ItemTableSort, PageResult } from "@/types/item";
+import { cacheTags } from "@/src/lib/cache-tags";
+import { apiFetch } from "@/src/lib/fetcher";
+import type { Item, ItemTableFilter, ItemTableQuery, ItemTableSort, PageResult } from "@/src/types/item";
 
 import { InventoryTable } from "./_components/InventoryTable.client";
 

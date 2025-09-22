@@ -1,30 +1,27 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
-import { appConfig } from "@/app-config";
+import { getSession } from "@/src/lib/auth";
 
 const AUTH_BYPASS_ENABLED = process.env.AUTH_BYPASS === "true";
 
-export function middleware(request: NextRequest) {
-  if (!request.nextUrl.pathname.startsWith(appConfig.urls.dashboard)) {
-    return NextResponse.next();
-  }
+export async function middleware(request: NextRequest) {
+  const session = await getSession();
 
   if (AUTH_BYPASS_ENABLED) {
     return NextResponse.next();
   }
 
-  const hasSession = request.cookies.get(appConfig.auth.sessionCookieName);
-  if (hasSession) {
+  if (session) {
     return NextResponse.next();
   }
 
-  const redirectUrl = new URL(appConfig.urls.marketing, request.url);
-  redirectUrl.searchParams.set(appConfig.auth.redirectQsKey, request.nextUrl.pathname);
+  const url = request.nextUrl.clone();
+  url.pathname = "/login";
+  url.searchParams.set("redirect", request.nextUrl.pathname);
 
-  return NextResponse.redirect(redirectUrl);
+  return NextResponse.redirect(url);
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/app/:path*"],
 };

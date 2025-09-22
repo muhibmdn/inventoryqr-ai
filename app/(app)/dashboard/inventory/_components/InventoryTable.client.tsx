@@ -30,7 +30,7 @@ import type {
   ItemTableQuery,
   ItemTableSort,
   PageResult,
-} from "@/types/item";
+} from "@/src/types/item";
 
 import { deleteItem, updateItem } from "../actions";
 import { CellNumberEditable } from "./cells/CellNumberEditable";

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 type MarketingErrorProps = {
   error: Error & { digest?: string };

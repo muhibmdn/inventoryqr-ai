@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/db";
-import { generateItemCodes } from "@/lib/item-codes";
-import { itemCreateSchema } from "@/lib/validators";
-import type { ApiResult, Item } from "@/types/item";
+import { db } from "@/src/db";
+import { generateItemCodes } from "@/src/lib/item-codes";
+import { itemCreateSchema } from "@/src/lib/validators";
+import type { ApiResult, Item } from "@/src/types/item";
 
 import {
   buildUpdatePayload,

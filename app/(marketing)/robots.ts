@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = new URL(appConfig.urls.base);

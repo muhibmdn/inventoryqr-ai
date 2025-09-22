@@ -2,9 +2,9 @@ import { revalidateTag } from "next/cache";
 import { Prisma, type Condition, type Item as PrismaItem } from "@prisma/client";
 import { z } from "zod";
 
-import { cacheTags } from "@/lib/cache-tags";
-import { itemCreateSchema } from "@/lib/validators";
-import type { Item } from "@/types/item";
+import { cacheTags } from "@/src/lib/cache-tags";
+import { itemCreateSchema } from "@/src/lib/validators";
+import type { Item } from "@/src/types/item";
 
 export type ItemSchemaInput = z.infer<typeof itemCreateSchema>;
 

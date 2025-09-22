@@ -9,7 +9,7 @@ import {
   type FormEvent,
 } from "react";
 
-import type { Item } from "@/types/item";
+import type { Item } from "@/src/types/item";
 
 import { Trash2, UploadCloud, X } from "lucide-react";
 

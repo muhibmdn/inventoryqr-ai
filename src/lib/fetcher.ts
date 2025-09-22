@@ -1,6 +1,6 @@
 import "server-only";
 
-import { appConfig } from "@/app-config";
+import { appConfig } from "@/src/app-config";
 
 import type { CacheTag } from "./cache-tags";
 

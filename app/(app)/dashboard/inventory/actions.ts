@@ -4,9 +4,9 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
-import { db } from "@/db";
-import { cacheTags } from "@/lib/cache-tags";
-import { generateItemCodes } from "@/lib/item-codes";
+import { db } from "@/src/db";
+import { cacheTags } from "@/src/lib/cache-tags";
+import { generateItemCodes } from "@/src/lib/item-codes";
 
 const conditionValues = ["NEW", "GOOD", "DEFECT", "BROKEN"] as const;
 

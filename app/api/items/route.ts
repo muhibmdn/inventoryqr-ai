@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
-import { db } from "@/db";
-import { itemCreateSchema } from "@/lib/validators";
-import type { ApiResult, Item } from "@/types/item";
+import { db } from "@/src/db";
+import { itemCreateSchema } from "@/src/lib/validators";
+import type { ApiResult, Item } from "@/src/types/item";
 
 import {
   buildCreatePayload,
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const owner = await db.user.findFirst({ where: { email: "demo@invee.local" } });
+  const owner = await db.user.findFirst({ where: { username: "demo" } });
   if (!owner) {
     return NextResponse.json<ApiResult<null>>(
       {

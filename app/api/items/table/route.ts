@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma, type Condition } from "@prisma/client";
 
-import { db } from "@/db";
-import { cacheTags } from "@/lib/cache-tags";
-import type { Item, PageResult } from "@/types/item";
+import { db } from "@/src/db";
+import { cacheTags } from "@/src/lib/cache-tags";
+import type { Item, PageResult } from "@/src/types/item";
 
 import { serializeItem, type PrismaItem } from "../utils";
 

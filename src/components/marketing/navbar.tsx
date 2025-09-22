@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AuthModal } from "./auth-modal";
 
-type AuthMode = "login" | "register";
+
+
 
 const navLinks = [
   { href: "/#home", label: "Beranda" },
@@ -12,8 +12,6 @@ const navLinks = [
 ];
 
 export function MarketingNavbar() {
-  const [open, setOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<AuthMode>("login");
   const [activeSection, setActiveSection] = useState("#home");
   const [scrolled, setScrolled] = useState(false);
 
@@ -56,29 +54,7 @@ export function MarketingNavbar() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const externalOpenHandler = (event: Event) => {
-      const detail = (event as CustomEvent<{ mode?: AuthMode }>).detail;
-      setModalMode(detail?.mode ?? "login");
-      setOpen(true);
-    };
-
-    window.addEventListener(
-      "auth-modal:open",
-      externalOpenHandler as EventListener
-    );
-    return () =>
-      window.removeEventListener(
-        "auth-modal:open",
-        externalOpenHandler as EventListener
-      );
-  }, []);
-
-  const openModal = (mode: AuthMode) => {
-    setModalMode(mode);
-    setOpen(true);
-  };
+  
 
   const headerClasses = scrolled
     ? "border-b border-[#CFE6D6] bg-white/80 backdrop-blur-xl shadow-sm"
@@ -128,20 +104,26 @@ export function MarketingNavbar() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <button
-            onClick={() => openModal("login")}
+          <Link
+            href="/login"
             className="inline-flex items-center justify-center rounded-full border border-[#2CBFA4]/70 bg-white px-4 py-2 text-sm font-semibold text-[#216B5B] transition hover:-translate-y-[1px] hover:border-[#2CBFA4] hover:bg-[#EAF6EE] hover:text-[#2E6431]"
           >
-            Masuk / Daftar
-          </button>
+            Masuk
+          </Link>
+          <Link
+            href="/register"
+            className="inline-flex items-center justify-center rounded-full border border-[#2CBFA4]/70 bg-white px-4 py-2 text-sm font-semibold text-[#216B5B] transition hover:-translate-y-[1px] hover:border-[#2CBFA4] hover:bg-[#EAF6EE] hover:text-[#2E6431]"
+          >
+            Daftar
+          </Link>
         </div>
 
-        <button
-          onClick={() => openModal("login")}
+        <Link
+          href="/login"
           className="inline-flex items-center justify-center rounded-full border border-[#36AF30] px-4 py-2 text-sm font-semibold text-[#216B5B] transition hover:bg-[#EAF6EE] md:hidden"
         >
           Masuk
-        </button>
+        </Link>
       </div>
 
       <nav className="flex items-center justify-center gap-6 border-t border-[#CFE6D6] bg-[#EAF6EE] px-4 py-3 text-sm font-medium text-[#216B5B] md:hidden">
@@ -170,11 +152,7 @@ export function MarketingNavbar() {
         })}
       </nav>
 
-      <AuthModal
-        open={open}
-        onOpenChange={setOpen}
-        initialMode={modalMode}
-      />
+      
     </header>
   );
 }

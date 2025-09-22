@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense } from "react";
 
-import { db } from "@/db";
+import { db } from "@/src/db";
 import { Condition } from "@prisma/client";
 
 import { DashboardHomeSkeleton } from "./_components/DashboardHomeSkeleton";
