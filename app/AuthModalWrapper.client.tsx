@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AuthModal } from "@/src/components/marketing/auth-modal";
+import { AuthModal } from "../src/components/marketing/auth-modal"; // Changed to relative path
 
 export function AuthModalWrapper() {
   const [open, setOpen] = useState(false);

@@ -8,9 +8,9 @@ import {
   buildWebsiteJsonLd,
 } from "@/lib/jsonld";
 
-import { MarketingNavbar } from "@/src/components/marketing/navbar";
-import { MarketingFooter } from "@/src/components/marketing/footer";
-import { AuthModalWrapper } from "./AuthModalWrapper.client"; // Import AuthModalWrapper from the new client component file
+import { MarketingNavbar } from "../src/components/marketing/navbar"; // Changed to relative path
+import { MarketingFooter } from "../src/components/marketing/footer"; // Changed to relative path
+import { AuthModalWrapper } from "./AuthModalWrapper.client";
 
 import "./globals.css";
 
