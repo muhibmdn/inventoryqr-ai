@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { useEffect, useState } from "react"; // Import useEffect and useState
 
 import { appConfig } from "@/app-config";
 import {
@@ -9,9 +8,9 @@ import {
   buildWebsiteJsonLd,
 } from "@/lib/jsonld";
 
-import { MarketingNavbar } from "@/src/components/marketing/navbar"; // Import MarketingNavbar
-import { MarketingFooter } from "@/src/components/marketing/footer"; // Import MarketingFooter
-import { AuthModal } from "@/src/components/marketing/auth-modal"; // Import AuthModal
+import { MarketingNavbar } from "@/src/components/marketing/navbar";
+import { MarketingFooter } from "@/src/components/marketing/footer";
+import { AuthModalWrapper } from "./AuthModalWrapper.client"; // Import AuthModalWrapper from the new client component file
 
 import "./globals.css";
 
@@ -73,33 +72,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   themeColor: "#ffffff",
 };
-
-// Client component to handle AuthModal state and event listener
-function AuthModalWrapper() {
-  const [open, setOpen] = useState(false);
-  const [initialMode, setInitialMode] = useState<"login" | "register">("login");
-
-  useEffect(() => {
-    const handleOpenModal = (event: CustomEvent) => {
-      setInitialMode(event.detail.mode);
-      setOpen(true);
-    };
-
-    window.addEventListener("auth-modal:open", handleOpenModal as EventListener);
-
-    return () => {
-      window.removeEventListener("auth-modal:open", handleOpenModal as EventListener);
-    };
-  }, []);
-
-  return (
-    <AuthModal
-      open={open}
-      onOpenChange={setOpen}
-      initialMode={initialMode}
-    />
-  );
-}
 
 export default function RootLayout({
   children,
