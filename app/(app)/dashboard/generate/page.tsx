@@ -196,7 +196,7 @@ export default function GenerateQrBarcodePage() {
               errorData.error ||
               "Gagal menganalisis gambar.";
           }
-        } catch (_e) {
+        } catch (_) {
           errorMessage =
             "Terjadi kesalahan pada server. Silakan coba lagi dalam beberapa saat.";
         }

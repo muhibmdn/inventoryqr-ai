@@ -10,7 +10,7 @@ import {
   buildPaginationMeta,
   revalidateInventoryViews,
   serializeItem,
-  type PrismaItem,
+  
 } from "./utils";
 
 const DEFAULT_PAGE = 1;
