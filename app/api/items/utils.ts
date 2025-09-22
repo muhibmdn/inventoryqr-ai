@@ -75,7 +75,7 @@ export const buildCreatePayload = (
   input: ItemSchemaInput,
   ownerId: string,
   raw: unknown
-): Prisma.ItemUncheckedCreateInput => {
+): Prisma.ItemUncheckedCreateInput & { itemImageBase64?: string | null } => {
   const rawRecord = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const sku = toNullableString(rawRecord.sku ?? rawRecord.code);
   const barcodePayload = toNullableString(rawRecord.barcodePayload);
@@ -86,6 +86,7 @@ export const buildCreatePayload = (
     typeof qrPayloadRaw === "string" && qrPayloadRaw.trim() !== ""
       ? qrPayloadRaw
       : undefined;
+  const itemImageBase64 = resolveImageData(rawRecord, "itemImage");
 
   return {
     ownerId,
@@ -110,6 +111,7 @@ export const buildCreatePayload = (
     qrImage: qrImageValue ?? null,
     barcodePayload,
     barcodeImage: barcodeImageValue ?? null,
+    itemImageBase64: itemImageBase64 ?? null,
   };
 };
 

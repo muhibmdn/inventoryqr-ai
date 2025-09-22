@@ -57,6 +57,15 @@ const initialForm: DetailFormState = {
   lastCheckedAt: "",
 };
 
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const steps = ["Upload Image", "Edit Detail", "Generate QR/Barcode"] as const;
 
 export default function GenerateQrBarcodePage() {
@@ -69,6 +78,7 @@ export default function GenerateQrBarcodePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
+  const [itemImageUrlBase64, setItemImageUrlBase64] = useState<string | null>(null); // New state for item image
   useEffect(() => {
     return () => {
       files.forEach((file) => URL.revokeObjectURL(file.previewUrl));
@@ -148,8 +158,8 @@ export default function GenerateQrBarcodePage() {
   }, []);
 
   const handleAnalyzeImages = async () => {
-    if (files.length < 2) {
-      setError("Pilih minimal dua gambar untuk analisis yang lebih akurat.");
+    if (files.length === 0) {
+      setError("Pilih setidaknya satu gambar untuk analisis.");
       return;
     }
 
@@ -157,19 +167,62 @@ export default function GenerateQrBarcodePage() {
     setInfo(null);
     setIsAnalyzing(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+      const firstFile = files[0].file;
+      const imageUrl = await fileToBase64(firstFile); // Convert file to base64
+      setItemImageUrlBase64(imageUrl); // Store the base64 image
 
-    setForm((prev) => ({
-      ...prev,
-      description:
-        prev.description ||
-        "Hasil AI Granite: Inventori siap jual dengan kondisi baik, termasuk kelengkapan standar.",
-      category: prev.category || "Peralatan Kantor",
-    }));
+      const response = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ imageUrl }),
+      });
 
-    setIsAnalyzing(false);
-    setInfo("AI Granite mengisi deskripsi dan kategori secara otomatis. Silakan periksa kembali detailnya sebelum membuat kode.");
-    setStep(1);
+      if (!response.ok) {
+        let errorMessage = "Gagal menganalisis gambar. Silakan coba lagi.";
+        try {
+          const errorData = await response.json();
+          if (
+            errorData.details &&
+            errorData.details.includes("Failed to find a valid JSON block")
+          ) {
+            errorMessage =
+              "AI tidak dapat memproses gambar ini. Coba gunakan gambar yang lebih jelas atau coba lagi nanti.";
+          } else {
+            errorMessage =
+              errorData.details ||
+              errorData.error ||
+              "Gagal menganalisis gambar.";
+          }
+        } catch (_e) {
+          errorMessage =
+            "Terjadi kesalahan pada server. Silakan coba lagi dalam beberapa saat.";
+        }
+        throw new Error(errorMessage);
+      }
+
+      const analyzedData = await response.json();
+      console.log("Analyzed Data unitPrice:", analyzedData.unitPrice); // Debugging line
+
+      setForm((prev) => ({
+        ...prev,
+        name: analyzedData.itemName || prev.name,
+        description: analyzedData.description || prev.description,
+        brandModel: analyzedData.brandModel || prev.brandModel,
+        category: analyzedData.category || prev.category,
+        unitPrice: analyzedData.unitPrice && analyzedData.unitPrice > 0 ? String(analyzedData.unitPrice) : "",
+      }));
+
+      setInfo("AI Granite telah mengisi detail barang secara otomatis. Silakan periksa kembali sebelum melanjutkan.");
+      setStep(1);
+    } catch (err) {
+      console.error("Error analyzing image:", err);
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat menganalisis gambar.");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleFormChange = <K extends keyof DetailFormState>(key: K, value: DetailFormState[K]) => {
@@ -240,6 +293,7 @@ export default function GenerateQrBarcodePage() {
           barcodePayload: inventoryCode,
           qrImage: qrWebp,
           barcodeImage,
+          itemImage: itemImageUrlBase64, // Add the item image to the payload
         }),
       });
 
@@ -328,7 +382,7 @@ export default function GenerateQrBarcodePage() {
               <div>
                 <h3 className="text-lg font-semibold text-[#216B5B]">Tarik & letakkan gambar di sini</h3>
                 <p className="mt-2 text-sm text-[#3E4643]">
-                  Pilih 2 atau lebih gambar untuk hasil analisis lebih akurat.
+                  Pilih satu gambar untuk analisis AI.
                 </p>
               </div>
             </div>
@@ -422,15 +476,7 @@ export default function GenerateQrBarcodePage() {
                   <h3 className="text-base font-semibold text-[#216B5B]">Keterangan</h3>
                   <button
                     type="button"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        description:
-                          prev.description ||
-                          "Hasil AI Granite: Inventori siap pakai dan telah diverifikasi kelengkapannya.",
-                        category: prev.category || "Elektronik",
-                      }))
-                    }
+                    onClick={handleAnalyzeImages}
                     className="inline-flex items-center gap-2 rounded-full border border-[#C7D9F7] bg-[#EAF2FD] px-3 py-1.5 text-xs font-semibold text-[#185AB6] transition hover:bg-[#C7D9F7]"
                   >
                     <Sparkles className="h-3.5 w-3.5" /> Gunakan AI Granite
@@ -467,15 +513,42 @@ export default function GenerateQrBarcodePage() {
                     <label className="grid gap-1 text-sm text-[#3E4643]">
                       Kategori Barang <span className="text-xs text-[#185AB6]">(disarankan)</span>
                       <select
-                        className="rounded-xl border border-[#CFE6D6] bg-white px-4 py-2 text-sm focus:border-[#36AF30] focus:outline-none"
+                        className="w-full truncate rounded-xl border border-[#CFE6D6] bg-white px-4 py-2 text-sm focus:border-[#36AF30] focus:outline-none"
                         value={form.category}
                         onChange={(event) => handleFormChange("category", event.target.value)}
                       >
                         <option value="">Pilih kategori</option>
-                        <option value="Peralatan Kantor">Peralatan Kantor</option>
-                        <option value="Elektronik">Elektronik</option>
-                        <option value="Furniture">Furniture</option>
-                        <option value="Perlengkapan Gudang">Perlengkapan Gudang</option>
+                        <option value="Aset Tetap">Aset Tetap (Fixed Assets)</option>
+                        <option value="Properti, Pabrik, dan Peralatan">Properti, Pabrik, dan Peralatan (PP&E)</option>
+                        <option value="Tanah & Bangunan">Tanah & Bangunan</option>
+                        <option value="Mesin & Peralatan Produksi">Mesin & Peralatan Produksi</option>
+                        <option value="Kendaraan">Kendaraan</option>
+                        <option value="Perabotan & Perlengkapan Kantor">Perabotan & Perlengkapan Kantor</option>
+                        <option value="Aset Teknologi Informasi">Aset Teknologi Informasi (IT Assets)</option>
+                        <option value="Perangkat Keras">Perangkat Keras (Hardware)</option>
+                        <option value="Perangkat Lunak">Perangkat Lunak (Software)</option>
+                        <option value="Perangkat Komunikasi">Perangkat Komunikasi</option>
+                        <option value="Inventaris Barang Dagangan">Inventaris Barang Dagangan (Merchandise Inventory)</option>
+                        <option value="Barang Jadi">Barang Jadi (Finished Goods)</option>
+                        <option value="Barang dalam Proses">Barang dalam Proses (Work-in-Progress - WIP)</option>
+                        <option value="Bahan Baku">Bahan Baku (Raw Materials)</option>
+                        <option value="Perlengkapan & Kebutuhan Operasional">Perlengkapan & Kebutuhan Operasional (Supplies & Consumables)</option>
+                        <option value="Perlengkapan Kantor">Perlengkapan Kantor (Office Supplies)</option>
+                        <option value="Alat Tulis Kantor">Alat Tulis Kantor (ATK)</option>
+                        <option value="Kebutuhan Pantry">Kebutuhan Pantry</option>
+                        <option value="Perlengkapan Kebersihan">Perlengkapan Kebersihan (Janitorial Supplies)</option>
+                        <option value="Perlengkapan Pemeliharaan">Perlengkapan Pemeliharaan (MRO)</option>
+                        <option value="Suku Cadang">Suku Cadang (Spare Parts)</option>
+                        <option value="Alat Keselamatan">Alat Keselamatan (Safety Equipment)</option>
+                        <option value="Alat Kerja">Alat Kerja</option>
+                        <option value="Aset Tidak Berwujud">Aset Tidak Berwujud (Intangible Assets)</option>
+                        <option value="Hak Kekayaan Intelektual">Hak Kekayaan Intelektual</option>
+                        <option value="Lisensi & Waralaba">Lisensi & Waralaba</option>
+                        <option value="Goodwill">Goodwill</option>
+                        <option value="Aset Lain-lain">Aset Lain-lain (Other Assets)</option>
+                        <option value="Materi Pemasaran & Promosi">Materi Pemasaran & Promosi</option>
+                        <option value="Dokumen & Arsip Penting">Dokumen & Arsip Penting</option>
+                        <option value="Barang Sampel">Barang Sampel (Sample Goods)</option>
                       </select>
                     </label>
                   </div>

@@ -22,6 +22,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import { Boxes, ChevronDown, ChevronRight, ListFilter, Pencil, Search, Trash2 } from "lucide-react";
+import Image from "next/image";
 
 import type {
   Item,
@@ -543,9 +544,16 @@ export function InventoryTable({ initial, initialQuery }: InventoryTableProps) {
                   href={image.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#EAF2FD] px-3 py-1 text-xs font-semibold text-[#185AB6]"
+                  className="relative h-16 w-16 overflow-hidden rounded-md border border-[#CFE6D6] bg-[#F8FBF9]"
                 >
-                  Lihat Foto {index + 1}
+                  <Image
+                    src={image.url}
+                    alt={`Foto barang ${item.name} ${index + 1}`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                    unoptimized
+                  />
                 </a>
               ))}
             </div>

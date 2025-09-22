@@ -16,5 +16,6 @@ export const itemCreateSchema = z.object({
   condition: z.enum(["NEW", "GOOD", "DEFECT", "BROKEN"]).optional(),
   pic: z.string().optional().nullable(),
   lastCheckedAt: z.string().optional().nullable(),
-  damagedAt: z.string().optional().nullable(),
+    damagedAt: z.string().optional().nullable(),
+  itemImage: z.string().optional().nullable(), // Add itemImage to schema
 });

@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         skip: Math.max(page - 1, 0) * pageSize,
         take: pageSize,
-      }) as Promise<PrismaItem[]>,
+        include: { images: true }, // Include images relation
+      }) as Promise<Prisma.ItemGetPayload<{ include: { images: true } }>[]>,
       db.item.count({ where }),
     ]);
 
@@ -87,8 +88,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const { itemImageBase64, ...itemData } = buildCreatePayload(parsed.data, owner.id, body);
+
   const created = await db.item.create({
-    data: buildCreatePayload(parsed.data, owner.id, body),
+    data: {
+      ...itemData,
+      ...(itemImageBase64 && {
+        images: {
+          create: { url: itemImageBase64 },
+        },
+      }),
+    },
   });
 
   revalidateInventoryViews();
