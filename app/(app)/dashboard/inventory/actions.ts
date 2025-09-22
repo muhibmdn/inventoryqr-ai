@@ -2,6 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 import { db } from "@/db";
 import { cacheTags } from "@/lib/cache-tags";
@@ -103,7 +104,7 @@ export async function updateItem(rawInput: unknown) {
 
   try {
     let generatedCodes: Awaited<ReturnType<typeof generateItemCodes>> | null = null;
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       if (Object.keys(data).length > 0) {
         await tx.item.update({
           where: { id },
@@ -193,7 +194,7 @@ export async function deleteItem(rawInput: unknown) {
   const { id } = parsed.data;
 
   try {
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.itemImage.deleteMany({ where: { itemId: id } });
       await tx.item.delete({ where: { id } });
     });
