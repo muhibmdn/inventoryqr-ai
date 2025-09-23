@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 
 import { appConfig } from "@/src/app-config";
 import {
@@ -71,12 +70,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   const organizationJsonLd = buildOrganizationJsonLd();
   const websiteJsonLd = buildWebsiteJsonLd();
   const softwareJsonLd = buildSoftwareJsonLd();
+
+  const escapeJson = (obj: unknown) =>
+    JSON.stringify(obj).replace(/</g, '\\u003c');
 
   return (
     <html
@@ -84,18 +86,30 @@ export default function RootLayout({
       suppressHydrationWarning
       data-scroll-behavior="smooth"
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: escapeJson(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: escapeJson(websiteJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: escapeJson(softwareJsonLd),
+          }}
+        />
+      </head>
       <body className="min-h-dvh bg-background-muted text-foreground-muted antialiased">
-        <Script id="jsonld-organization" type="application/ld+json">
-          {JSON.stringify(organizationJsonLd)}
-        </Script>
-        <Script id="jsonld-website" type="application/ld+json">
-          {JSON.stringify(websiteJsonLd)}
-        </Script>
-        <Script id="jsonld-software" type="application/ld+json">
-          {JSON.stringify(softwareJsonLd)}
-        </Script>
         {children}
       </body>
     </html>
   );
 }
+
