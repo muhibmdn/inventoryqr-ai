@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  relationMode = "prisma"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  relationMode = "foreignKeys"
 }
 
 enum Condition {
@@ -18,17 +18,17 @@ enum Condition {
 model User {
   id        String   @id @default(cuid())
   username  String  @unique
-  name      String?
-  passwordHash String?
+  passwordHash String
   role      String?
   items     Item[]
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Item {
   id             String    @id @default(cuid())
   ownerId        String
-  owner          User      @relation(fields: [ownerId], references: [id])
+  owner          User      @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   images         ItemImage[]
   name           String
   description    String?
@@ -61,7 +61,7 @@ model Item {
 model ItemImage {
   id        String   @id @default(cuid())
   itemId    String
-  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   url       String
   createdAt DateTime @default(now())
 }
